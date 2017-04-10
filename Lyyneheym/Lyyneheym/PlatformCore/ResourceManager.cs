@@ -161,25 +161,40 @@ namespace Yuri.PlatformCore
             if (this.resourceTable.ContainsKey(DevURI) &&
                 this.resourceTable[DevURI].ContainsKey(sourceName))
             {
-                KeyValuePair<long, long> sourceLocation = this.resourceTable[DevURI][sourceName];
-                byte[] ob = PackageUtils.GetObjectBytes(IOUtils.ParseURItoURL(PackURI + GlobalDataContainer.PackPostfix),
-                    sourceName, sourceLocation.Key, sourceLocation.Value);
+                // 检查缓冲
+                byte[] ob = ResourceCachePool.Refer(rtype.ToString() + "->" + sourceName);
+                if (ob == null)
+                {
+                    KeyValuePair<long, long> sourceLocation = this.resourceTable[DevURI][sourceName];
+                    ob = PackageUtils.GetObjectBytes(IOUtils.ParseURItoURL(PackURI + GlobalDataContainer.PackPostfix),
+                        sourceName, sourceLocation.Key, sourceLocation.Value);
+                    ResourceCachePool.Register(rtype.ToString() + "->" + sourceName, ob);
+                }
                 MemoryStream ms = new MemoryStream(ob);
                 sprite.Init(sourceName, rtype, ms, cutRect);
             }
             // 没有封包数据再搜索开发目录
             else
             {
-                string furi = IOUtils.JoinPath(GlobalDataContainer.DevURI_RT_PICTUREASSETS, DevURI, sourceName);
-                if (File.Exists(IOUtils.ParseURItoURL(furi)))
+                // 检查缓冲
+                byte[] ob = ResourceCachePool.Refer(rtype.ToString() + "->" + sourceName);
+                if (ob == null)
                 {
-                    Uri bg = new Uri(IOUtils.ParseURItoURL(furi), UriKind.RelativeOrAbsolute);
-                    sprite.Init(sourceName, rtype, bg, cutRect);
+                    string furi = IOUtils.JoinPath(GlobalDataContainer.DevURI_RT_PICTUREASSETS, DevURI, sourceName);
+                    if (File.Exists(IOUtils.ParseURItoURL(furi)))
+                    {
+                        Uri bg = new Uri(IOUtils.ParseURItoURL(furi), UriKind.RelativeOrAbsolute);
+                        ob = IOUtils.GetObjectBytes(bg);
+                        ResourceCachePool.Register(rtype.ToString() + "->" + sourceName, ob);
+                    }
+                    else
+                    {
+                        MessageBox.Show("[错误] 资源文件不存在：" + sourceName);
+                        Director.GetInstance().GetMainRender().Shutdown();
+                    }
                 }
-                else
-                {
-                    throw new Exception("文件不存在：" + sourceName);
-                }
+                MemoryStream ms = new MemoryStream(ob);
+                sprite.Init(sourceName, rtype, ms, cutRect);
             }
             return sprite;
         }
@@ -192,7 +207,7 @@ namespace Yuri.PlatformCore
         /// <returns>一个键值对：该音频的内存托管句柄 - 内存长度</returns>
         private KeyValuePair<GCHandle?, long> GetMusicGCHandleLengthKVP(string sourceName, ResourceType rtype)
         {
-            if (sourceName == "") { return new KeyValuePair<GCHandle?,long>(null, 0); }
+            if (sourceName == String.Empty) { return new KeyValuePair<GCHandle?,long>(null, 0); }
             string DevURI = null, PackURI = null;
             // 处理路径
             switch (rtype)
@@ -236,7 +251,9 @@ namespace Yuri.PlatformCore
                 }
                 else
                 {
-                    throw new Exception("文件不存在：" + sourceName);
+                    MessageBox.Show("[错误] 资源文件不存在：" + sourceName);
+                    Director.GetInstance().GetMainRender().Shutdown();
+                    throw new FileNotFoundException();
                 }
             }
         }
@@ -354,7 +371,7 @@ namespace Yuri.PlatformCore
                     resContainer.Enqueue(file.FullName);
                 }
             }
-            CommonUtils.ConsoleLine("Total PST: " + resContainer.Count, "ResMana", OutputStyle.Important);
+            CommonUtils.ConsoleLine("Total PST: " + resContainer.Count, "ResourceManager", OutputStyle.Important);
             return resContainer;
         }
 
@@ -414,16 +431,18 @@ namespace Yuri.PlatformCore
             }
             this.pendingPst = this.SearchPST();
             // 开始线程处理
-            List<Thread> threadPool = new List<Thread>();
-            this.threadFinishCounter = 0;
-            for (int t = 0; t < threadNum; t++)
-            {
-                threadPool.Add(new Thread(new ParameterizedThreadStart(this.InitDictionaryByPST)));
-                threadPool[t].IsBackground = true;
-                threadPool[t].Start(t);
-            }
-            // 等待线程回调
-            while (this.threadFinishCounter < threadNum);
+            //List<Thread> threadPool = new List<Thread>();
+            //this.threadFinishCounter = 0;
+            //for (int t = 0; t < threadNum; t++)
+            //{
+            //    threadPool.Add(new Thread(new ParameterizedThreadStart(this.InitDictionaryByPST)));
+            //    threadPool[t].IsBackground = true;
+            //    threadPool[t].Start(t);
+            //}
+            //// 等待线程回调
+            //while (this.threadFinishCounter < threadNum);
+
+            this.InitDictionaryByPST(0);
         }
 
         /// <summary>

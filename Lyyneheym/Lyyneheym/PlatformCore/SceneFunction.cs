@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Yuri.ILPackage;
 
@@ -20,6 +19,7 @@ namespace Yuri.PlatformCore
             this.ParentSceneName = parent;
             this.Callname = callname;
             this.Sa = sa;
+            this.LabelDictionary = new Dictionary<string, SceneAction>();
         }
 
         /// <summary>
@@ -95,5 +95,10 @@ namespace Yuri.PlatformCore
         /// 绑定符号表
         /// </summary>
         public Dictionary<string, object> Symbols = new Dictionary<string,object>();
+
+        /// <summary>
+        /// 场景标签字典
+        /// </summary>
+        public Dictionary<string, SceneAction> LabelDictionary { get; set; }
     }
 }

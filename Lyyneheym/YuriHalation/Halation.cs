@@ -2,10 +2,7 @@
 using System.IO;
 using System.Windows.Forms;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using YuriHalation;
 using YuriHalation.YuriForms;
 using Yuri.YuriHalation.ScriptPackage;
 using Yuri.YuriHalation.HalationCore;
@@ -580,9 +577,9 @@ namespace Yuri
         public void LoadProject(string projFile)
         {
             FileInfo fileinf = new FileInfo(projFile);
-            Halation.projectName = fileinf.Directory.Name;
             Halation.projectFolder = fileinf.DirectoryName;
             Halation.project = (ProjectPackage)FileManager.Unserialization(projFile);
+            Halation.projectName = Halation.project.Config.GameProjName;
             foreach (var sc in Halation.project.GetScene())
             {
                 HalationInvoker.AddScene(sc.sceneName);

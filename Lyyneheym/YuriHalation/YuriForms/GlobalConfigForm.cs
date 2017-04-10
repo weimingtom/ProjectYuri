@@ -1,10 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 using Yuri;
 using Yuri.YuriHalation.ScriptPackage;
@@ -14,7 +9,7 @@ namespace YuriHalation.YuriForms
     /// <summary>
     /// 窗体：全局设定
     /// </summary>
-    public partial class GlobalConfigForm : Form
+    public partial class  GlobalConfigForm : Form
     {
         /// <summary>
         /// 构造器
@@ -37,7 +32,7 @@ namespace YuriHalation.YuriForms
             this.textBox4.Text = config.GameProjKey;
             // 可视页
             this.numericUpDown1.Value = config.GameViewWindowWidth;
-            this.numericUpDown2.Value = config.GameViewWindowWidth;
+            this.numericUpDown2.Value = config.GameViewWindowHeight;
             this.checkBox1.Checked = config.GameViewWindowResizeable;
             this.numericUpDown3.Value = config.GameViewCStandLeftX;
             this.numericUpDown4.Value = config.GameViewCStandLeftY;
@@ -121,7 +116,7 @@ namespace YuriHalation.YuriForms
             config.GameProjKey = this.textBox4.Text;
             // 可视页
             config.GameViewWindowWidth = (int)this.numericUpDown1.Value;
-            config.GameViewWindowWidth = (int)this.numericUpDown2.Value;
+            config.GameViewWindowHeight = (int)this.numericUpDown2.Value;
             config.GameViewWindowResizeable = this.checkBox1.Checked;
             config.GameViewCStandLeftX = (int)this.numericUpDown3.Value;
             config.GameViewCStandLeftY = (int)this.numericUpDown4.Value;

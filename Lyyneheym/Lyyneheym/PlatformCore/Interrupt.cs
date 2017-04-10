@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Yuri.ILPackage;
 
 namespace Yuri.PlatformCore
@@ -20,7 +17,7 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 中断描述
         /// </summary>
-        public string detail = "";
+        public string detail = String.Empty;
 
         /// <summary>
         /// <para>中断后执行的中断处理动作</para>
@@ -32,7 +29,7 @@ namespace Yuri.PlatformCore
         /// <para>中断处理函数调用签名</para>
         /// <para>这个动作将在处理完中断动作后被施加到调用堆栈</para>
         /// </summary>
-        public string interruptFuncSign = "";
+        public string interruptFuncSign = String.Empty;
 
         /// <summary>
         /// <para>中断结束后跳转的标签名</para>

@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Yuri.PlatformCore
 {
@@ -9,7 +6,7 @@ namespace Yuri.PlatformCore
     /// 精灵按钮描述类
     /// </summary>
     [Serializable]
-    internal class SpriteButtonDescriptor
+    internal class SpriteButtonDescriptor : CloneableDescriptor
     {
         /// <summary>
         /// 构造一个按钮描述子

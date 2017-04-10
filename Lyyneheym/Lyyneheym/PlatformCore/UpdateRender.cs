@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Animation;
-
-using Yuri;
 using Yuri.Utils;
 using Yuri.ILPackage;
 
@@ -34,7 +31,7 @@ namespace Yuri.PlatformCore
             {
                 return nullValue;
             }
-            return Convert.ToDouble(Director.RunMana.CalculatePolish(polish));
+            return Convert.ToDouble(Director.RunMana.CalculatePolish(polish, this.VsmReference));
         }
 
         /// <summary>
@@ -50,7 +47,7 @@ namespace Yuri.PlatformCore
             {
                 return nullValue;
             }
-            return (int)(Convert.ToDouble(Director.RunMana.CalculatePolish(polish)));
+            return (int)(Convert.ToDouble(Director.RunMana.CalculatePolish(polish, this.VsmReference)));
         }
 
         /// <summary>
@@ -66,7 +63,7 @@ namespace Yuri.PlatformCore
             {
                 return nullValue;
             }
-            return Director.RunMana.CalculatePolish(polish).ToString();
+            return Director.RunMana.CalculatePolish(polish, this.VsmReference).ToString();
         }
 
         /// <summary>
@@ -106,6 +103,12 @@ namespace Yuri.PlatformCore
         public void SetKeyboardState(Key key, KeyStates state)
         {
             UpdateRender.KS_KEY_Dict[key] = state;
+            Director.RunMana.Assignment("&kb_" + key.ToString(), "1", this.VsmReference);
+            if ((UpdateRender.KS_KEY_Dict[Key.LeftAlt] == KeyStates.Down || UpdateRender.KS_KEY_Dict[Key.RightAlt] == KeyStates.Down)
+                && UpdateRender.KS_KEY_Dict[Key.F4] == KeyStates.Down)
+            {
+                this.Shutdown();
+            }
         }
 
         /// <summary>
@@ -137,7 +140,18 @@ namespace Yuri.PlatformCore
         /// </summary>
         public void SetMouseWheelDelta(int delta)
         {
+            // 更新变量
             UpdateRender.KS_MOUSE_WHEEL_DELTA = delta;
+            // 上滚
+            if (delta > 0)
+            {
+                RollbackManager.SteadyBackward();
+            }
+            // 下滚
+            else
+            {
+                //RollbackManager.SteadyForward(true, null, null);
+            }
         }
 
         /// <summary>
@@ -182,7 +196,7 @@ namespace Yuri.PlatformCore
                         else if (this.pendingDialogQueue.Count == 0)
                         {
                             // 弹掉用户等待状态
-                            Director.RunMana.ExitCall();
+                            Director.RunMana.ExitCall(Director.RunMana.CallStack);
                             this.isShowingDialog = false;
                             this.dialogPreStr = String.Empty;
                             // 非连续对话时消除对话框
@@ -193,11 +207,14 @@ namespace Yuri.PlatformCore
                             }
                             // 截断语音
                             this.Stopvocal();
+                            // 标记为非回滚
+                            RollbackManager.IsRollingBack = false;
+
                         }
                         // 正在显示对话则向前推进一个趟
                         else
                         {
-                            this.viewMana.GetMessageLayer(0).DisplayBinding.Visibility = Visibility.Visible;
+                            this.viewMana.GetMessageLayer(0).Visibility = Visibility.Visible;
                             this.DrawDialogRunQueue();
                         }
                     }
@@ -228,10 +245,12 @@ namespace Yuri.PlatformCore
                         if (mainMsgLayer.Visibility == Visibility.Hidden)
                         {
                             mainMsgLayer.Visibility = Visibility.Visible;
+                            MainMsgTriangleSprite.DisplayBinding.Visibility = Visibility.Visible;
                         }
                         else
                         {
                             mainMsgLayer.Visibility = Visibility.Hidden;
+                            MainMsgTriangleSprite.DisplayBinding.Visibility = Visibility.Hidden;
                         }
                     }
                 }
@@ -256,14 +275,6 @@ namespace Yuri.PlatformCore
         {
             
         }
-
-        /// <summary>
-        /// 更新函数：并行处理器，每帧被调用一次
-        /// </summary>
-        public void ParallelProcessor()
-        {
-
-        }
         
         /// <summary>
         /// 鼠标左键是否松开标志位
@@ -284,6 +295,10 @@ namespace Yuri.PlatformCore
         /// <param name="str">要描绘的字符串</param>
         public void DrawStringToMsgLayer(int msglayId, string str)
         {
+            // 清除上一次的显示缓存
+            this.viewMana.GetMessageLayer(0).Text = String.Empty;
+            this.dialogPreStr = String.Empty;
+            // 标记显示
             this.isShowingDialog = true;
             string[] strRuns = this.DialogToRuns(str);
             foreach (string run in strRuns)
@@ -304,7 +319,7 @@ namespace Yuri.PlatformCore
         {
             if (this.pendingDialogQueue.Count != 0)
             {
-                string currentRun = "";
+                string currentRun = String.Empty;
                 for (int i = 0; i < runCount; i++)
                 {
                     if (this.pendingDialogQueue.Count != 0)
@@ -312,6 +327,12 @@ namespace Yuri.PlatformCore
                         currentRun += this.pendingDialogQueue.Dequeue();
                     }
                 }
+                // 回滚时不打字而是直接显示
+                //if (RollbackManager.IsRollingBack)
+                //{
+                //    wordDelay = false;
+                //}
+                // 打字动画
                 this.TypeWriter(0, this.dialogPreStr, currentRun, this.viewMana.GetMessageLayer(0).DisplayBinding, wordDelay ? GlobalDataContainer.GAME_MSG_TYPING_DELAY : 0);
                 this.dialogPreStr += currentRun;
             }
@@ -344,7 +365,7 @@ namespace Yuri.PlatformCore
                     {
                         int varPtr = i + 3;
                         while (varPtr < dialogStr.Length && dialogStr[varPtr++] != '}');
-                        string varStr = Director.RunMana.Fetch("$" + dialogStr.Substring(i + 3, varPtr - i - 4)).ToString();
+                        string varStr = Director.RunMana.Fetch("$" + dialogStr.Substring(i + 3, varPtr - i - 4), this.VsmReference).ToString();
                         dialogStr = dialogStr.Remove(i, varPtr - i);
                         dialogStr = dialogStr.Insert(i, varStr);
                     }
@@ -352,7 +373,7 @@ namespace Yuri.PlatformCore
                     {
                         int varPtr = i + 3;
                         while (varPtr < dialogStr.Length && dialogStr[varPtr++] != '}') ;
-                        string varStr = Director.RunMana.Fetch("&" + dialogStr.Substring(i + 3, varPtr - i - 4)).ToString();
+                        string varStr = Director.RunMana.Fetch("&" + dialogStr.Substring(i + 3, varPtr - i - 4), this.VsmReference).ToString();
                         dialogStr = dialogStr.Remove(i, varPtr - i);
                         dialogStr = dialogStr.Insert(i, varStr);
                     }
@@ -423,7 +444,7 @@ namespace Yuri.PlatformCore
             TriaView.RenderTransform = new TranslateTransform();
             Canvas.SetLeft(TriaView, GlobalDataContainer.GAME_MESSAGELAYER_TRIA_X);
             Canvas.SetTop(TriaView, GlobalDataContainer.GAME_MESSAGELAYER_TRIA_Y);
-            Canvas.SetZIndex(TriaView, GlobalDataContainer.GAME_Z_PICTURES - 1);
+            Canvas.SetZIndex(TriaView, GlobalDataContainer.GAME_Z_MESSAGELAYER + 100);
             this.view.BO_MainGrid.Children.Add(this.MainMsgTriangleSprite.DisplayBinding);
         }
 
@@ -538,13 +559,29 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 渲染类构造器
         /// </summary>
-        public UpdateRender()
+        /// <param name="vsm">关于哪个调用堆栈做动作</param>
+        public UpdateRender(StackMachine vsm)
         {
-            // 初始化鼠标键位
-            UpdateRender.KS_MOUSE_Dict.Add(MouseButton.Left, MouseButtonState.Released);
-            UpdateRender.KS_MOUSE_Dict.Add(MouseButton.Middle, MouseButtonState.Released);
-            UpdateRender.KS_MOUSE_Dict.Add(MouseButton.Right, MouseButtonState.Released);
+            // 绑定调用堆栈
+            this.VsmReference = vsm;
+            // 初始化鼠标和键盘变量
+            if (UpdateRender.KS_MOUSE_Dict.ContainsKey(MouseButton.Left) == false)
+            {
+                UpdateRender.KS_MOUSE_Dict[MouseButton.Left] = MouseButtonState.Released;
+                UpdateRender.KS_MOUSE_Dict[MouseButton.Middle] = MouseButtonState.Released;
+                UpdateRender.KS_MOUSE_Dict[MouseButton.Right] = MouseButtonState.Released;
+                foreach (var t in Enum.GetNames(typeof(Key)))
+                {
+                    UpdateRender.KS_KEY_Dict[(Key)Enum.Parse(typeof(Key), t)] = KeyStates.None;
+                    Director.RunMana.Assignment("&kb_" + t, "0", vsm);
+                }
+            }
         }
+
+        /// <summary>
+        /// 作用堆栈的引用
+        /// </summary>
+        public StackMachine VsmReference = null;
 
         /// <summary>
         /// 主窗体引用
@@ -746,7 +783,7 @@ namespace Yuri.PlatformCore
                         );
                     break;
                 case SActionType.act_msglayeropt:
-                    var dashMsgoptItem = Director.RunMana.CalculatePolish(action.argsDict["dash"]);
+                    var dashMsgoptItem = Director.RunMana.CalculatePolish(action.argsDict["dash"], this.VsmReference);
                     this.MsgLayerOpt(
                         this.ParseInt(action.argsDict["id"], 0),
                         this.ParseDirectString(action.argsDict["target"], ""),
@@ -790,13 +827,18 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 演绎函数：显示文本
         /// </summary>
+        /// <remarks>若要强行修改对话框中的内容，请使用DrawStringToMsgLayer方法</remarks>
         /// <param name="dialogStr">要显示的文本</param>
         private void Dialog(string dialogStr, bool continous)
         {
+            // 清除上一次的显示缓存
+            this.viewMana.GetMessageLayer(0).Text = String.Empty;
+            this.dialogPreStr = String.Empty;
+            // 刷新
             this.pendingDialog = dialogStr;
             this.viewMana.GetMessageLayer(0).Visibility = Visibility.Visible;
             this.DrawStringToMsgLayer(0, this.pendingDialog);
-            this.pendingDialog = string.Empty;
+            this.pendingDialog = String.Empty;
         }
 
         /// <summary>
@@ -915,8 +957,8 @@ namespace Yuri.PlatformCore
         /// </summary>
         /// <param name="id">图片ID</param>
         /// <param name="filename">资源名称</param>
-        /// <param name="x">图片X坐标</param>
-        /// <param name="y">图片Y坐标</param>
+        /// <param name="x">[废弃的] 图片X坐标</param>
+        /// <param name="y">[废弃的] 图片Y坐标</param>
         /// <param name="opacity">不透明度</param>
         /// <param name="xscale">X缩放比</param>
         /// <param name="yscale">Y缩放比</param>
@@ -925,7 +967,8 @@ namespace Yuri.PlatformCore
         /// <param name="cut">纹理切割矩</param>
         private void Background(int id, string filename, double x, double y, double opacity, double xscale, double yscale, double ro, SpriteAnchorType anchor, Int32Rect cut)
         {
-            Director.ScrMana.AddBackground(id, filename, x, y, id, ro, opacity, xscale, yscale, anchor, cut);
+            Director.ScrMana.AddBackground(id, filename, GlobalDataContainer.GAME_WINDOW_WIDTH / 2.0, GlobalDataContainer.GAME_WINDOW_HEIGHT / 2.0,
+                id, ro, opacity, xscale, yscale, anchor, cut);
             this.viewMana.Draw(id, ResourceType.Background);
         }
 
@@ -970,11 +1013,11 @@ namespace Yuri.PlatformCore
             switch (property)
             {
                 case "x":
-                    SpriteAnimation.XYMoveToAnimation(actionSprite, duration, toValue, actionSprite.DisplayY, acc, 0);
+                    SpriteAnimation.XMoveToAnimation(actionSprite, duration, toValue, acc);
                     descriptor.X = toValue;
                     break;
                 case "y":
-                    SpriteAnimation.XYMoveToAnimation(actionSprite, duration, actionSprite.DisplayX, toValue, 0, acc);
+                    SpriteAnimation.YMoveToAnimation(actionSprite, duration, toValue, acc);
                     descriptor.Y = toValue;
                     break;
                 case "o":
@@ -1122,18 +1165,18 @@ namespace Yuri.PlatformCore
         /// <param name="volume">音量</param>
         public void Bgm(string resourceName, double volume)
         {
+            // 空即为停止
+            if (resourceName == null || resourceName == String.Empty)
+            {
+                Director.RunMana.PlayingBGM = String.Empty;
+                this.musician.StopAndReleaseBGM();
+            }
             // 如果当前BGM就是此BGM就只调整音量
-            if (this.musician.currentBGM != resourceName)
+            else if (this.musician.currentBGM != resourceName)
             {
                 var bgmKVP = this.resMana.GetBGM(resourceName);
                 Director.RunMana.PlayingBGM = resourceName;
                 this.musician.PlayBGM(resourceName, bgmKVP.Key, bgmKVP.Value, (float)volume);
-            }
-            // 空即为停止
-            else if (resourceName == "")
-            {
-                Director.RunMana.PlayingBGM = "";
-                this.musician.StopAndReleaseBGM();
             }
             else
             {
@@ -1213,23 +1256,23 @@ namespace Yuri.PlatformCore
         /// 演绎函数：保存游戏
         /// </summary>
         /// <param name="saveFileName">文件名</param>
-        private void Save(string saveFileName)
+        public void Save(string saveFileName)
         {
             SpriteAnimation.SkipAllAnimation();
             if (this.pendingDialogQueue.Count > 0)
             {
                 this.DrawDialogRunQueue(this.pendingDialogQueue.Count, false);
             }
-            Director.RunMana.PreviewSave();
+            var sp = Director.RunMana.PreviewSave();
             IOUtils.Serialization(Director.RunMana, GlobalDataContainer.GAME_SAVE_DIR + "\\" + saveFileName + GlobalDataContainer.GAME_SAVE_POSTFIX);
-            Director.RunMana.FinishedSave();
+            Director.RunMana.FinishedSave(sp);
         }
 
         /// <summary>
         /// 演绎函数：载入游戏
         /// </summary>
         /// <param name="loadFileName">文件名</param>
-        private void Load(string loadFileName)
+        public void Load(string loadFileName)
         {
             SpriteAnimation.SkipAllAnimation();
             var rm = (RuntimeManager)IOUtils.Unserialization(GlobalDataContainer.GAME_SAVE_DIR + "\\" + loadFileName + GlobalDataContainer.GAME_SAVE_POSTFIX);
@@ -1243,7 +1286,7 @@ namespace Yuri.PlatformCore
         /// <param name="dashPolish">表达式的等价逆波兰式</param>
         private void Var(string varname, string dashPolish)
         {
-            Director.RunMana.Assignment(varname, dashPolish);
+            Director.RunMana.Assignment(varname, dashPolish, this.VsmReference);
         }
 
         /// <summary>

@@ -1,18 +1,14 @@
 ﻿using System;
-using System.IO;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using System.Windows.Media.Animation;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using Transitionals;
-
+using Transitionals.Controls;
 using Yuri.Utils;
 
 namespace Yuri.PlatformCore
@@ -36,15 +32,33 @@ namespace Yuri.PlatformCore
         /// </summary>
         public void ReDraw()
         {
-            // 重绘精灵
+            // 先重绘视窗
+            for (int i = 0; i < 3; i++)
+            {
+                this.ReDrawViewport((ViewportType)i, Director.ScrMana.GetViewboxDescriptor((ViewportType)i));
+            }
+            // 重绘背景
             for (int i = 0; i < this.backgroundSpriteVec.Count; i++)
             {
                 this.ReDrawSprite(i, this.backgroundSpriteVec, ResourceType.Background, Director.ScrMana.GetSpriteDescriptor(i, ResourceType.Background), false);
             }
+            // 还原过渡器位置
+            if (this.backgroundSpriteVec[(int)BackgroundPage.Fore] != null && this.backgroundSpriteVec[(int)BackgroundPage.Fore].DisplayBinding != null)
+            {
+                var box = this.GetTransitionBox();
+                var foreDesc = Director.ScrMana.GetSpriteDescriptor((int)BackgroundPage.Fore, ResourceType.Background);
+                SpriteAnimation.XMoveAnimation(this.backgroundSpriteVec[(int)BackgroundPage.Fore], TimeSpan.FromMilliseconds(0),
+                    Canvas.GetLeft(box), foreDesc.X, 0);
+                SpriteAnimation.YMoveAnimation(this.backgroundSpriteVec[(int)BackgroundPage.Fore], TimeSpan.FromMilliseconds(0),
+                    Canvas.GetTop(box), foreDesc.Y, 0);
+                Canvas.SetZIndex(box, this.backgroundSpriteVec[(int)BackgroundPage.Fore].DisplayZ);
+            }
+            // 重绘立绘
             for (int i = 0; i < this.characterStandSpriteVec.Count; i++)
             {
                 this.ReDrawSprite(i, this.characterStandSpriteVec, ResourceType.Stand, Director.ScrMana.GetSpriteDescriptor(i, ResourceType.Stand), false);
             }
+            // 重绘图片
             for (int i = 0; i < this.pictureSpriteVec.Count; i++)
             {
                 this.ReDrawSprite(i, this.pictureSpriteVec, ResourceType.Pictures, Director.ScrMana.GetSpriteDescriptor(i, ResourceType.Pictures), false);
@@ -143,6 +157,16 @@ namespace Yuri.PlatformCore
         public BranchButton GetBranchButton(int id)
         {
             return this.branchButtonVec[id];
+        }
+
+        /// <summary>
+        /// 获取画面上的视窗
+        /// </summary>
+        /// <param name="vt"></param>
+        /// <returns>视窗实例</returns>
+        public YuriViewport GetViewport(ViewportType vt)
+        {
+            return this.viewboxVec[(int)vt];
         }
 
         /// <summary>
@@ -266,18 +290,22 @@ namespace Yuri.PlatformCore
             {
                 case ResourceType.Background:
                     removeOne = this.backgroundSpriteVec[id];
-                    this.backgroundSpriteVec[id] = null;
+                    // 交换前景和背景，为消除背景做准备
+                    ScreenManager.GetInstance().Backlay();
+                    // 执行过渡，消除背景
+                    this.ApplyTransition("FadeTransition");
                     break;
                 case ResourceType.Stand:
                     removeOne = this.characterStandSpriteVec[id];
                     this.characterStandSpriteVec[id] = null;
+                    this.RemoveSprite(ResourceType.Stand, removeOne);
                     break;
                 case ResourceType.Pictures:
                     removeOne = this.pictureSpriteVec[id];
                     this.pictureSpriteVec[id] = null;
+                    this.RemoveSprite(ResourceType.Pictures, removeOne);
                     break;
             }
-            this.RemoveSprite(removeOne);
         }
 
         /// <summary>
@@ -309,6 +337,18 @@ namespace Yuri.PlatformCore
         /// <param name="transTypeName">过渡类型的名字</param>
         public void ApplyTransition(string transTypeName)
         {
+            // 刷新精灵
+            var backDesc = Director.ScrMana.GetSpriteDescriptor((int)BackgroundPage.Back, ResourceType.Background);
+            var foreDesc = Director.ScrMana.GetSpriteDescriptor((int)BackgroundPage.Fore, ResourceType.Background);
+            if (backDesc == null)
+            {
+                this.backgroundSpriteVec[0] = null;
+            }
+            if (foreDesc == null)
+            {
+                this.backgroundSpriteVec[1] = null;
+            }
+            // 获取过渡的类型
             Type transType = this.transitionTypes[0];
             foreach (var t in this.transitionTypes)
             {
@@ -320,7 +360,12 @@ namespace Yuri.PlatformCore
                 }
             }
             Transition transition = (Transition)Activator.CreateInstance(transType);
-
+            // 处理真实的Backlay动作
+            if (this.backgroundSpriteVec[(int)BackgroundPage.Back] != null &&
+                this.backgroundSpriteVec[(int)BackgroundPage.Back].DisplayBinding != null)
+            {
+                this.backgroundSpriteVec[(int)BackgroundPage.Back].DisplayBinding.Visibility = Visibility.Visible;
+            }
             CommonUtils.Swap<YuriSprite>(this.backgroundSpriteVec, (int)BackgroundPage.Fore, (int)BackgroundPage.Back);
             if (this.backgroundSpriteVec[(int)BackgroundPage.Fore] != null)
             {
@@ -330,26 +375,93 @@ namespace Yuri.PlatformCore
             {
                 this.backgroundSpriteVec[(int)BackgroundPage.Back].DisplayZ = (int)BackgroundPage.Back + GlobalDataContainer.GAME_Z_BACKGROUND;
             }
+            // 交换前景和背景
             Director.ScrMana.Backlay();
-
             this.view.TransitionDS.ObjectInstance = transition;
             var viewBinder = this.backgroundSpriteVec[(int)BackgroundPage.Fore] == null ?
                 null : this.backgroundSpriteVec[(int)BackgroundPage.Fore].DisplayBinding;
-            if (viewBinder != null && this.view.BO_MainGrid.Children.Contains(viewBinder))
+            var canvas = this.GetDrawingCanvas(ResourceType.Background);
+            if (viewBinder != null && canvas.Children.Contains(viewBinder))
             {
-                this.view.BO_MainGrid.Children.Remove(viewBinder);
+                canvas.Children.Remove(viewBinder);
                 Canvas.SetZIndex(this.view.TransitionBox, Canvas.GetZIndex(viewBinder));
             }
+            // 执行过渡
+            this.view.TransitionBox.TransitionEnded += TransitionEnded;
             this.view.TransitionBox.Content = viewBinder;
+        }
+        
+        /// <summary>
+        /// 在过渡效果完成时触发
+        /// </summary>
+        private void TransitionEnded(object sender, TransitionEventArgs e)
+        {
+            // 恢复back层不可见
+            if (this.backgroundSpriteVec[(int)BackgroundPage.Back] != null &&
+                this.backgroundSpriteVec[(int)BackgroundPage.Back].DisplayBinding != null)
+            {
+                this.backgroundSpriteVec[(int)BackgroundPage.Back].DisplayBinding.Visibility = Visibility.Hidden;
+            }
         }
 
         /// <summary>
-        /// 为视窗管理器设置主窗体的引用
+        /// 为视窗管理器设置主窗体的引用并更新视窗向量
         /// </summary>
         /// <param name="mw">主窗体</param>
         public void SetMainWndReference(MainWindow mw)
         {
             this.view = mw;
+            this.InitViewbox();
+        }
+
+        /// <summary>
+        /// 获取主视窗上的过渡容器
+        /// </summary>
+        /// <returns>过渡容器引用</returns>
+        public TransitionElement GetTransitionBox()
+        {
+            return this.view.TransitionBox;
+        }
+
+        /// <summary>
+        /// 重绘视窗
+        /// </summary>
+        /// <param name="vt">视窗类型</param>
+        private void ReDrawViewport(ViewportType vt, ViewportDescriptor descriptor)
+        {
+            // 取得前端对象
+            Viewbox vb = this.viewboxVec[(int)vt].ViewboxBinding;
+            // 重定位Left
+            Storyboard storyLeft = new Storyboard();
+            double BgfromX = Canvas.GetLeft(vb);
+            DoubleAnimation doubleAniLeft = new DoubleAnimation(BgfromX, descriptor.Left, TimeSpan.FromMilliseconds(0));
+            Storyboard.SetTarget(doubleAniLeft, vb);
+            Storyboard.SetTargetProperty(doubleAniLeft, new PropertyPath(Canvas.LeftProperty));
+            storyLeft.Children.Add(doubleAniLeft);
+            storyLeft.Duration = TimeSpan.FromMilliseconds(0);
+            // 重定位Top
+            Storyboard storyTop = new Storyboard();
+            double BgfromY = Canvas.GetTop(vb);
+            DoubleAnimation doubleAniTop = new DoubleAnimation(BgfromY, descriptor.Top, TimeSpan.FromMilliseconds(0));
+            Storyboard.SetTarget(doubleAniTop, vb);
+            Storyboard.SetTargetProperty(doubleAniTop, new PropertyPath(Canvas.TopProperty));
+            storyTop.Children.Add(doubleAniTop);
+            storyTop.Duration = TimeSpan.FromMilliseconds(0);
+            // 重定位Scale
+            Storyboard storyScale = new Storyboard();
+            DoubleAnimation doubleAniScaleX = new DoubleAnimation(1, descriptor.ScaleX, TimeSpan.FromMilliseconds(0));
+            DoubleAnimation doubleAniScaleY = new DoubleAnimation(1, descriptor.ScaleY, TimeSpan.FromMilliseconds(0));
+            Storyboard.SetTarget(doubleAniScaleX, vb);
+            Storyboard.SetTarget(doubleAniScaleY, vb);
+            Storyboard.SetTargetProperty(doubleAniScaleX, new PropertyPath("(UIElement.RenderTransform).(TransformGroup.Children)[1].(ScaleTransform.ScaleX)"));
+            Storyboard.SetTargetProperty(doubleAniScaleY, new PropertyPath("(UIElement.RenderTransform).(TransformGroup.Children)[1].(ScaleTransform.ScaleY)"));
+            storyScale.Children.Add(doubleAniScaleX);
+            storyScale.Children.Add(doubleAniScaleY);
+            storyScale.Duration = TimeSpan.FromMilliseconds(0);
+            // 执行变换
+            storyScale.Begin();
+            storyLeft.Begin();
+            storyTop.Begin();
         }
 
         /// <summary>
@@ -363,7 +475,25 @@ namespace Yuri.PlatformCore
         private void ReDrawSprite(int id, List<YuriSprite> vector, ResourceType rType, SpriteDescriptor descriptor, bool forceReload)
         {
             // 不需要重绘的情况
-            if (descriptor == null) { return; }
+            if (descriptor == null)
+            {
+                if (vector[id] != null)
+                {
+                    switch (rType)
+                    {
+                        case ResourceType.Background:
+                            this.RemoveSprite(id, ResourceType.Background);
+                            break;
+                        case ResourceType.Stand:
+                            this.RemoveSprite(id, ResourceType.Stand);
+                            break;
+                        case ResourceType.Pictures:
+                            this.RemoveSprite(id, ResourceType.Pictures);
+                            break;
+                    }
+                }
+                return;
+            }
             YuriSprite sprite = vector[id], newSprite = null;
             // 强制重新载入或资源名称不同时重新加载资源文件
             if (sprite == null ||
@@ -383,9 +513,13 @@ namespace Yuri.PlatformCore
                         break;
                 }
             }
+            else
+            {
+                newSprite = sprite;
+            }
             // 重绘精灵
-            this.RemoveSprite(sprite);
-            this.DrawSprite(newSprite, descriptor);
+            this.RemoveSprite(rType, sprite);
+            this.DrawSprite(newSprite, descriptor, rType);
         }
 
         /// <summary>
@@ -400,7 +534,7 @@ namespace Yuri.PlatformCore
             if (descriptor == null) { return; }
             MessageLayer msglay = this.messageLayerVec[id];
             if (msglay == null ||
-                msglay.BackgroundSprite.ResourceName != descriptor.BackgroundResourceName ||
+                (msglay.BackgroundSprite != null && msglay.BackgroundSprite.ResourceName != descriptor.BackgroundResourceName) ||
                 forceReload)
             {
                 YuriSprite bgSprite = ResourceManager.GetInstance().GetPicture(descriptor.BackgroundResourceName, new Int32Rect(-1, 0, 0, 0));
@@ -455,11 +589,32 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
+        /// 获取对象要描绘上去的画布
+        /// </summary>
+        /// <param name="rType">资源类型</param>
+        /// <returns>画布的引用</returns>
+        private Canvas GetDrawingCanvas(ResourceType rType)
+        {
+            switch (rType)
+            {
+                case ResourceType.Background:
+                    return this.viewboxVec[(int)ViewportType.VTBackground].CanvasBinding;
+                case ResourceType.Stand:
+                    return this.viewboxVec[(int)ViewportType.VTCharacterStand].CanvasBinding;
+                case ResourceType.Pictures:
+                    return this.viewboxVec[(int)ViewportType.VTPictures].CanvasBinding;
+                default:
+                    return this.view.BO_MainGrid;
+            }
+        }
+
+        /// <summary>
         /// 为主窗体描绘一个精灵
         /// </summary>
         /// <param name="sprite">精灵</param>
         /// <param name="descriptor">精灵描述子</param>
-        private void DrawSprite(YuriSprite sprite, SpriteDescriptor descriptor)
+        /// <param name="rType">资源类型</param>
+        private void DrawSprite(YuriSprite sprite, SpriteDescriptor descriptor, ResourceType rType)
         {
             if (sprite == null) { return; }
             Image spriteImage = new Image();
@@ -471,16 +626,20 @@ namespace Yuri.PlatformCore
             sprite.CutRect = descriptor.CutRect;
             sprite.DisplayBinding = spriteImage;
             sprite.Anchor = descriptor.AnchorType;
-            Canvas.SetLeft(spriteImage, descriptor.X);
-            Canvas.SetTop(spriteImage, descriptor.Y);
+            sprite.Descriptor = descriptor;
+            Canvas.SetLeft(spriteImage, descriptor.X - bmp.PixelWidth / 2.0);
+            Canvas.SetTop(spriteImage, descriptor.Y - bmp.PixelHeight / 2.0);
             Canvas.SetZIndex(spriteImage, descriptor.Z);
-            spriteImage.Visibility = Visibility.Visible;
-            this.view.BO_MainGrid.Children.Add(spriteImage);
+            spriteImage.Visibility = (rType == ResourceType.Background && descriptor.Id == 0) ? Visibility.Hidden : Visibility.Visible;
+            this.GetDrawingCanvas(rType).Children.Add(spriteImage);
             sprite.InitAnimationRenderTransform();
-            SpriteAnimation.RotateToAnimation(sprite, TimeSpan.FromMilliseconds(0), descriptor.Angle, 0);
-            SpriteAnimation.ScaleToAnimation(sprite, TimeSpan.FromMilliseconds(0), descriptor.ScaleX, descriptor.ScaleY, 0, 0);
+            if (rType != ResourceType.Background)
+            {
+                SpriteAnimation.RotateToAnimation(sprite, TimeSpan.FromMilliseconds(0), descriptor.Angle, 0);
+                SpriteAnimation.ScaleToAnimation(sprite, TimeSpan.FromMilliseconds(0), descriptor.ScaleX, descriptor.ScaleY, 0, 0);
+            }
         }
-
+        
         /// <summary>
         /// 为主窗体描绘一个文字层
         /// </summary>
@@ -493,11 +652,14 @@ namespace Yuri.PlatformCore
             if (msglay.BackgroundSprite != null && msglay.BackgroundSprite.SpriteBitmapImage != null)
             {
                 ImageBrush ib = new ImageBrush(msglay.BackgroundSprite.SpriteBitmapImage);
+                BitmapImage t = ib.ImageSource as BitmapImage;
                 ib.Stretch = Stretch.None;
+                ib.TileMode = TileMode.None;
                 ib.AlignmentX = AlignmentX.Left;
                 ib.AlignmentY = AlignmentY.Top;
                 msgBlock.Background = ib;
             }
+            
             msglay.Width = descriptor.Width;
             msglay.Height = descriptor.Height;
             msglay.Opacity = descriptor.Opacity;
@@ -509,7 +671,7 @@ namespace Yuri.PlatformCore
             msglay.FontSize = descriptor.FontSize;
             msglay.FontName = descriptor.FontName;
             msglay.FontShadow = descriptor.FontShadow;
-            msglay.DisplayBinding.TextWrapping = TextWrapping.Wrap;
+            msglay.DisplayBinding.TextWrapping = TextWrapping.NoWrap;
             msglay.DisplayBinding.TextAlignment = TextAlignment.Left;
             Canvas.SetLeft(msgBlock, descriptor.X);
             Canvas.SetTop(msgBlock, descriptor.Y);
@@ -644,19 +806,21 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
-        /// 将精灵从画面移除
+        /// 将精灵从画布上移除
         /// </summary>
+        /// <param name="rType">资源类型</param>
         /// <param name="sprite">精灵实例</param>
-        private void RemoveSprite(YuriSprite sprite)
+        private void RemoveSprite(ResourceType rType, YuriSprite sprite)
         {
             if (sprite != null)
             {
-                Image spriteView = sprite.DisplayBinding;
+                var spriteView = sprite.DisplayBinding;
+                var canvas = this.GetDrawingCanvas(rType);
                 if (spriteView != null)
                 {
-                    if (this.view.BO_MainGrid.Children.Contains(spriteView))
+                    if (canvas.Children.Contains(spriteView))
                     {
-                        this.view.BO_MainGrid.Children.Remove(spriteView);
+                        canvas.Children.Remove(spriteView);
                     }
                 }
                 sprite.DisplayBinding = null;
@@ -729,6 +893,56 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
+        /// 初始化视窗
+        /// </summary>
+        private void InitViewbox()
+        {
+            // 初始化视窗向量
+            this.viewboxVec[(int)ViewportType.VTBackground] = new YuriViewport()
+            {
+                Type = ViewportType.VTBackground,
+                ViewboxBinding = this.view.BO_Bg_Viewbox,
+                CanvasBinding = this.view.BO_Bg_Canvas
+            };
+            this.viewboxVec[(int)ViewportType.VTCharacterStand] = new YuriViewport()
+            {
+                Type = ViewportType.VTCharacterStand,
+                ViewboxBinding = this.view.BO_Cstand_Viewbox,
+                CanvasBinding = this.view.BO_Cstand_Canvas
+            };
+            this.viewboxVec[(int)ViewportType.VTPictures] = new YuriViewport()
+            {
+                Type = ViewportType.VTPictures,
+                ViewboxBinding = this.view.BO_Pics_Viewbox,
+                CanvasBinding = this.view.BO_Pics_Canvas
+            };
+            // 初始化变换动画
+            for (int i = 0; i < 3; i++)
+            {
+                TransformGroup aniGroup = new TransformGroup();
+                TranslateTransform XYTransformer = new TranslateTransform();
+                ScaleTransform ScaleTransformer = new ScaleTransform();
+                ScaleTransformer.CenterX = GlobalDataContainer.GAME_WINDOW_WIDTH / 2.0;
+                ScaleTransformer.CenterY = GlobalDataContainer.GAME_WINDOW_HEIGHT / 2.0;
+                RotateTransform RotateTransformer = new RotateTransform();
+                RotateTransformer.CenterX = GlobalDataContainer.GAME_WINDOW_WIDTH / 2.0;
+                RotateTransformer.CenterY = GlobalDataContainer.GAME_WINDOW_HEIGHT / 2.0;
+                aniGroup.Children.Add(XYTransformer);
+                aniGroup.Children.Add(ScaleTransformer);
+                aniGroup.Children.Add(RotateTransformer);
+                this.viewboxVec[i].ViewboxBinding.RenderTransform = aniGroup;
+                this.viewboxVec[i].RotateTransformer = RotateTransformer;
+                this.viewboxVec[i].TranslateTransformer = XYTransformer;
+                this.viewboxVec[i].ScaleTransformer = ScaleTransformer;
+            }
+        }
+
+        /// <summary>
+        /// 视窗向量
+        /// </summary>
+        private List<YuriViewport> viewboxVec;
+
+        /// <summary>
         /// 背景精灵向量
         /// </summary>
         private List<YuriSprite> backgroundSpriteVec;
@@ -775,6 +989,11 @@ namespace Yuri.PlatformCore
             this.messageLayerVec = new List<MessageLayer>();
             this.branchButtonVec = new List<BranchButton>();
             this.buttonLayerVec = new List<SpriteButton>();
+            this.viewboxVec = new List<YuriViewport>();
+            for (int i = 0; i < 3; i++)
+            {
+                this.viewboxVec.Add(null);
+            }
             for (int i = 0; i < GlobalDataContainer.GAME_BACKGROUND_COUNT; i++)
             {
                 this.backgroundSpriteVec.Add(null);

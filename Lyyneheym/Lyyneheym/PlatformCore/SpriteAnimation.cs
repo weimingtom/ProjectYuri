@@ -26,21 +26,112 @@ namespace Yuri.PlatformCore
         public static void XYMoveAnimation(YuriSprite sprite, Duration duration, double fromX, double toX, double fromY, double toY, double accX, double accY)
         {
             Storyboard story = new Storyboard();
-            DoubleAnimation doubleAniLeft = new DoubleAnimation(fromX, toX, duration);
-            DoubleAnimation doubleAniTop = new DoubleAnimation(fromY, toY, duration);
+            DoubleAnimation doubleAniLeft = new DoubleAnimation(fromX, toX - sprite.DisplayWidth / 2.0, duration);
+            DoubleAnimation doubleAniTop = new DoubleAnimation(fromY, toY - sprite.DisplayHeight / 2.0, duration);
             doubleAniLeft.AccelerationRatio = accX;
             doubleAniTop.AccelerationRatio = accY;
-            Storyboard.SetTarget(doubleAniLeft, sprite.DisplayBinding);
-            Storyboard.SetTarget(doubleAniTop, sprite.DisplayBinding);
+            if (sprite.Descriptor.ResourceType == ResourceType.Background)
+            {
+                Storyboard.SetTarget(doubleAniLeft, ViewManager.GetInstance().GetTransitionBox());
+                Storyboard.SetTarget(doubleAniTop, ViewManager.GetInstance().GetTransitionBox());
+            }
+            else
+            {
+                Storyboard.SetTarget(doubleAniLeft, sprite.DisplayBinding);
+                Storyboard.SetTarget(doubleAniTop, sprite.DisplayBinding);
+            }
             Storyboard.SetTargetProperty(doubleAniLeft, new PropertyPath(Canvas.LeftProperty));
             Storyboard.SetTargetProperty(doubleAniTop, new PropertyPath(Canvas.TopProperty));
             story.Children.Add(doubleAniLeft);
             story.Children.Add(doubleAniTop);
             story.Duration = duration;
-            story.Completed += story_Completed;
-            sprite.AnimateCount++;
-            int tt = story.GetHashCode();
-            SpriteAnimation.aniDict[story] = sprite;
+            if (duration.TimeSpan.TotalMilliseconds != 0)
+            {
+                story.Completed += story_Completed;
+                sprite.AnimateCount++;
+                SpriteAnimation.aniDict[story] = sprite;
+            }
+            story.Begin();
+        }
+
+        /// <summary>
+        /// 在笛卡尔平面上水平方向移动精灵
+        /// </summary>
+        /// <param name="sprite">精灵实例</param>
+        /// <param name="duration">动画时长</param>
+        /// <param name="fromX">起始X</param>
+        /// <param name="toX">目标X</param>
+        /// <param name="accX">加速度X</param>
+        public static void XMoveAnimation(YuriSprite sprite, Duration duration, double fromX, double toX, double accX)
+        {
+            Storyboard story = new Storyboard();
+            DoubleAnimation doubleAniLeft = new DoubleAnimation(fromX, toX - sprite.DisplayWidth / 2.0, duration);
+            if (accX >= 0)
+            {
+                doubleAniLeft.AccelerationRatio = accX;
+            }
+            else
+            {
+                doubleAniLeft.DecelerationRatio = -accX;
+            }
+            if (sprite.Descriptor.ResourceType == ResourceType.Background)
+            {
+                Storyboard.SetTarget(doubleAniLeft, ViewManager.GetInstance().GetTransitionBox());
+            }
+            else
+            {
+                Storyboard.SetTarget(doubleAniLeft, sprite.DisplayBinding);
+
+            }
+            Storyboard.SetTargetProperty(doubleAniLeft, new PropertyPath(Canvas.LeftProperty));
+            story.Children.Add(doubleAniLeft);
+            story.Duration = duration;
+            if (duration.TimeSpan.TotalMilliseconds != 0)
+            {
+                story.Completed += story_Completed;
+                sprite.AnimateCount++;
+                SpriteAnimation.aniDict[story] = sprite;
+            }
+            story.Begin();
+        }
+
+        /// <summary>
+        /// 在笛卡尔平面上竖直移动精灵
+        /// </summary>
+        /// <param name="sprite">精灵实例</param>
+        /// <param name="duration">动画时长</param>
+        /// <param name="fromY">起始Y</param>
+        /// <param name="toY">目标Y</param>
+        /// <param name="accY">加速度Y</param>
+        public static void YMoveAnimation(YuriSprite sprite, Duration duration, double fromY, double toY, double accY)
+        {
+            Storyboard story = new Storyboard();
+            DoubleAnimation doubleAniTop = new DoubleAnimation(fromY, toY - sprite.DisplayHeight / 2.0, duration);
+            if (accY >= 0)
+            {
+                doubleAniTop.AccelerationRatio = accY;
+            }
+            else
+            {
+                doubleAniTop.DecelerationRatio = -accY;
+            }
+            if (sprite.Descriptor.ResourceType == ResourceType.Background)
+            {
+                Storyboard.SetTarget(doubleAniTop, ViewManager.GetInstance().GetTransitionBox());
+            }
+            else
+            {
+                Storyboard.SetTarget(doubleAniTop, sprite.DisplayBinding);
+            }
+            Storyboard.SetTargetProperty(doubleAniTop, new PropertyPath(Canvas.TopProperty));
+            story.Children.Add(doubleAniTop);
+            story.Duration = duration;
+            if (duration.TimeSpan.TotalMilliseconds != 0)
+            {
+                story.Completed += story_Completed;
+                sprite.AnimateCount++;
+                SpriteAnimation.aniDict[story] = sprite;
+            }
             story.Begin();
         }
 
@@ -55,15 +146,32 @@ namespace Yuri.PlatformCore
         public static void ZMoveAnimation(YuriSprite sprite, Duration duration, int fromZ, int toZ, double accZ)
         {
             Storyboard story = new Storyboard();
-            DoubleAnimation doubleAniZ = new DoubleAnimation(fromZ, toZ, duration);
-            doubleAniZ.AccelerationRatio = accZ;
-            Storyboard.SetTarget(doubleAniZ, sprite.DisplayBinding);
-            Storyboard.SetTargetProperty(doubleAniZ, new PropertyPath(Canvas.ZIndexProperty));
-            story.Children.Add(doubleAniZ);
+            Int32Animation int32AniZ = new Int32Animation(fromZ, toZ, duration);
+            if (accZ >= 0)
+            {
+                int32AniZ.AccelerationRatio = accZ;
+            }
+            else
+            {
+                int32AniZ.DecelerationRatio = -accZ;
+            }
+            if (sprite.Descriptor.ResourceType == ResourceType.Background)
+            {
+                Storyboard.SetTarget(int32AniZ, ViewManager.GetInstance().GetTransitionBox());
+            }
+            else
+            {
+                Storyboard.SetTarget(int32AniZ, sprite.DisplayBinding);
+            }
+            Storyboard.SetTargetProperty(int32AniZ, new PropertyPath(Canvas.ZIndexProperty));
+            story.Children.Add(int32AniZ);
             story.Duration = duration;
-            story.Completed += story_Completed;
-            sprite.AnimateCount++;
-            SpriteAnimation.aniDict[story] = sprite;
+            if (duration.TimeSpan.TotalMilliseconds != 0)
+            {
+                story.Completed += story_Completed;
+                sprite.AnimateCount++;
+                SpriteAnimation.aniDict[story] = sprite;
+            }
             story.Begin();
         }
 
@@ -83,18 +191,43 @@ namespace Yuri.PlatformCore
             Storyboard story = new Storyboard();
             DoubleAnimation doubleAniScaleX = new DoubleAnimation(fromScaleX, toScaleX, duration);
             DoubleAnimation doubleAniScaleY = new DoubleAnimation(fromScaleY, toScaleY, duration);
-            doubleAniScaleX.AccelerationRatio = accX;
-            doubleAniScaleY.AccelerationRatio = accY;
-            Storyboard.SetTarget(doubleAniScaleX, sprite.DisplayBinding);
-            Storyboard.SetTarget(doubleAniScaleY, sprite.DisplayBinding);
+            if (accX >= 0)
+            {
+                doubleAniScaleX.AccelerationRatio = accX;
+            }
+            else
+            {
+                doubleAniScaleX.DecelerationRatio = -accX;
+            }
+            if (accY >= 0)
+            {
+                doubleAniScaleY.AccelerationRatio = accY;
+            }
+            else
+            {
+                doubleAniScaleY.DecelerationRatio = -accY;
+            }
+            if (sprite.Descriptor.ResourceType == ResourceType.Background)
+            {
+                Storyboard.SetTarget(doubleAniScaleX, ViewManager.GetInstance().GetTransitionBox());
+                Storyboard.SetTarget(doubleAniScaleY, ViewManager.GetInstance().GetTransitionBox());
+            }
+            else
+            {
+                Storyboard.SetTarget(doubleAniScaleX, sprite.DisplayBinding);
+                Storyboard.SetTarget(doubleAniScaleY, sprite.DisplayBinding);
+            }
             Storyboard.SetTargetProperty(doubleAniScaleX, new PropertyPath("(UIElement.RenderTransform).(TransformGroup.Children)[1].(ScaleTransform.ScaleX)"));
             Storyboard.SetTargetProperty(doubleAniScaleY, new PropertyPath("(UIElement.RenderTransform).(TransformGroup.Children)[1].(ScaleTransform.ScaleY)"));
             story.Children.Add(doubleAniScaleX);
             story.Children.Add(doubleAniScaleY);
             story.Duration = duration;
-            story.Completed += story_Completed;
-            sprite.AnimateCount++;
-            SpriteAnimation.aniDict[story] = sprite;
+            if (duration.TimeSpan.TotalMilliseconds != 0)
+            {
+                story.Completed += story_Completed;
+                sprite.AnimateCount++;
+                SpriteAnimation.aniDict[story] = sprite;
+            }
             story.Begin();
         }
 
@@ -110,14 +243,31 @@ namespace Yuri.PlatformCore
         {
             Storyboard story = new Storyboard();
             DoubleAnimation doubleAniOpacity = new DoubleAnimation(fromOpacity, toOpacity, duration);
-            doubleAniOpacity.AccelerationRatio = acc;
-            Storyboard.SetTarget(doubleAniOpacity, sprite.DisplayBinding);
+            if (acc >= 0)
+            {
+                doubleAniOpacity.AccelerationRatio = acc;
+            }
+            else
+            {
+                doubleAniOpacity.DecelerationRatio = -acc;
+            }
+            if (sprite.Descriptor.ResourceType == ResourceType.Background)
+            {
+                Storyboard.SetTarget(doubleAniOpacity, ViewManager.GetInstance().GetTransitionBox());
+            }
+            else
+            {
+                Storyboard.SetTarget(doubleAniOpacity, sprite.DisplayBinding);
+            }
             Storyboard.SetTargetProperty(doubleAniOpacity, new PropertyPath(Image.OpacityProperty));
             story.Children.Add(doubleAniOpacity);
             story.Duration = duration;
-            story.Completed += story_Completed;
-            sprite.AnimateCount++;
-            SpriteAnimation.aniDict[story] = sprite;
+            if (duration.TimeSpan.TotalMilliseconds != 0)
+            {
+                story.Completed += story_Completed;
+                sprite.AnimateCount++;
+                SpriteAnimation.aniDict[story] = sprite;
+            }
             story.Begin();
         }
 
@@ -133,14 +283,31 @@ namespace Yuri.PlatformCore
         {
             Storyboard story = new Storyboard();
             DoubleAnimation doubleAniRotate = new DoubleAnimation(fromTheta, toTheta, duration);
-            doubleAniRotate.AccelerationRatio = acc;
-            Storyboard.SetTarget(doubleAniRotate, sprite.DisplayBinding);
+            if (acc >= 0)
+            {
+                doubleAniRotate.AccelerationRatio = acc;
+            }
+            else
+            {
+                doubleAniRotate.DecelerationRatio = -acc;
+            }
+            if (sprite.Descriptor.ResourceType == ResourceType.Background)
+            {
+                Storyboard.SetTarget(doubleAniRotate, ViewManager.GetInstance().GetTransitionBox());
+            }
+            else
+            {
+                Storyboard.SetTarget(doubleAniRotate, sprite.DisplayBinding);
+            }
             Storyboard.SetTargetProperty(doubleAniRotate, new PropertyPath("(UIElement.RenderTransform).(TransformGroup.Children)[2].(RotateTransform.Angle)"));
             story.Children.Add(doubleAniRotate);
             story.Duration = duration;
-            story.Completed += story_Completed;
-            sprite.AnimateCount++;
-            SpriteAnimation.aniDict[story] = sprite;
+            if (duration.TimeSpan.TotalMilliseconds != 0)
+            {
+                story.Completed += story_Completed;
+                sprite.AnimateCount++;
+                SpriteAnimation.aniDict[story] = sprite;
+            }
             story.Begin();
         }
 
@@ -234,6 +401,32 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
+        /// 笛卡尔平面上水平移动精灵到目标点
+        /// </summary>
+        /// <param name="sprite">精灵实例</param>
+        /// <param name="duration">动画时长</param>
+        /// <param name="toX">目标X</param>
+        /// <param name="accX">加速度X</param>
+        public static void XMoveToAnimation(YuriSprite sprite, Duration duration, double toX, double accX = 0)
+        {
+            if (sprite.DisplayBinding == null) { return; }
+            SpriteAnimation.XMoveAnimation(sprite, duration, sprite.DisplayX, toX, accX);
+        }
+
+        /// <summary>
+        /// 笛卡尔平面上竖直移动精灵到目标点
+        /// </summary>
+        /// <param name="sprite">精灵实例</param>
+        /// <param name="duration">动画时长</param>
+        /// <param name="toY">目标X</param>
+        /// <param name="accY">加速度X</param>
+        public static void YMoveToAnimation(YuriSprite sprite, Duration duration, double toY, double accY = 0)
+        {
+            if (sprite.DisplayBinding == null) { return; }
+            SpriteAnimation.YMoveAnimation(sprite, duration, sprite.DisplayY, toY, accY);
+        }
+
+        /// <summary>
         /// 在层次深度上移动精灵到目标深度值
         /// </summary>
         /// <param name="sprite">精灵实例</param>
@@ -303,7 +496,14 @@ namespace Yuri.PlatformCore
             if (sprite.DisplayBinding == null) { return; }
             Storyboard story = new Storyboard();
             DoubleAnimation doubleAni = new DoubleAnimation(fromValue, toValue, duration);
-            doubleAni.AccelerationRatio = acc;
+            if (acc >= 0)
+            {
+                doubleAni.AccelerationRatio = acc;
+            }
+            else
+            {
+                doubleAni.DecelerationRatio = -acc;
+            }
             Storyboard.SetTarget(doubleAni, sprite.DisplayBinding);
             Storyboard.SetTargetProperty(doubleAni, propath);
             story.Children.Add(doubleAni);
@@ -323,7 +523,14 @@ namespace Yuri.PlatformCore
             DoubleAnimation da = new DoubleAnimation(0, jumpDelta, duration);
             da.RepeatBehavior = RepeatBehavior.Forever;
             da.AutoReverse = true;
-            da.AccelerationRatio = acc;
+            if (acc >= 0)
+            {
+                da.AccelerationRatio = acc;
+            }
+            else
+            {
+                da.DecelerationRatio = -acc;
+            }
             Storyboard.SetTarget(da, sprite.DisplayBinding);
             DependencyProperty[] propertyChain = new DependencyProperty[]
             {
@@ -388,6 +595,18 @@ namespace Yuri.PlatformCore
                 }
             }
             return maxt;
+        }
+
+        /// <summary>
+        /// 结束全部动画并清空字典
+        /// </summary>
+        public static void ClearAnimateWaitingDict()
+        {
+            foreach (var a in SpriteAnimation.aniDict)
+            {
+                a.Key.SkipToFill();
+            }
+            SpriteAnimation.aniDict.Clear();
         }
 
         /// <summary>

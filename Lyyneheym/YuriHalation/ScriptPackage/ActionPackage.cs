@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace Yuri.YuriHalation.ScriptPackage
@@ -114,7 +113,7 @@ namespace Yuri.YuriHalation.ScriptPackage
                 case ActionPackageType.script:
                 case ActionPackageType.act_dialog:
                     string displayStr = this.argsDict["context"].valueExp.Replace(Environment.NewLine, " ");
-                    desSb.Append(String.Format("{0} ", displayStr.Length > 15 ? displayStr.Substring(0, 15) + "..." : displayStr));
+                    desSb.Append(String.Format("{0} ", displayStr.Length > 40 ? displayStr.Substring(0, 40) + "..." : displayStr));
                     break;
                 case ActionPackageType.act_a:
                     desSb.Append(String.Format("名字:{0} ", this.argsDict["name"].valueExp));

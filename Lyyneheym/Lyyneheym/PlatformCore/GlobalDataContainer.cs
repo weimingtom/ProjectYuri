@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace Yuri.PlatformCore
 {
@@ -110,6 +107,20 @@ namespace Yuri.PlatformCore
         public static double GAME_CHARACTERSTAND_RIGHT_X = 525;
         // 图像层：右立绘Y
         public static double GAME_CHARACTERSTAND_RIGHT_Y = 60;
+        // 场景镜头：屏幕纵向划分块数
+        public static int GAME_SCAMERA_SCR_ROWCOUNT = 5;
+        // 场景镜头：屏幕横向划分块数
+        public static int GAME_SCAMERA_SCR_COLCOUNT = 16;
+        // 场景镜头：屏幕横向单侧出血块数
+        public static int GAME_SCAMERA_SCR_SINGLEBLOODCOLCOUNT = 3;
+        // 场景镜头：立绘纵向划分块数
+        public static int GAME_SCAMERA_CSTAND_ROWCOUNT = 12;
+        // 场景镜头：立绘横向尺寸
+        public static int GAME_SCAMERA_CSTAND_WIDTH = 2031;
+        // 场景镜头：立绘纵向尺寸
+        public static int GAME_SCAMERA_CSTAND_HEIGHT = 2952;
+        // 场景镜头：立绘正常半身态缩放比
+        public static double GAME_SCAMERA_CSTAND_NORMALRATIO = 0.4;
         // 全局：背景Z坐标
         public static int GAME_Z_BACKGROUND = 0;
         // 全局：立绘Z坐标最小值
@@ -209,8 +220,10 @@ namespace Yuri.PlatformCore
         #region 系统信息
         // 脚本入口
         public static readonly string Script_Main = "main";
-        // 刷新频率
-        public static readonly double DirectorTimerInterval = 1000.0 / 60.0;
+        // 刷新频率（万分之一毫秒）
+        public static readonly double DirectorTimerInterval = 10000;
+        // 最大回滚尺度
+        public static readonly int MaxRollbackStep = 100;
         #endregion
 
         #region 枚举类型

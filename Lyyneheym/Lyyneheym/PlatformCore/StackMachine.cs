@@ -8,16 +8,26 @@ namespace Yuri.PlatformCore
     /// 栈机类：负责游戏流程的调度
     /// </summary>
     [Serializable]
-    internal class StackMachine
+    internal class StackMachine : ForkableState
     {
         /// <summary>
         /// 构造函数：建立一个新的栈机
         /// </summary>
+        /// 
         public StackMachine()
         {
             this.Reset();
         }
 
+        /// <summary>
+        /// 为堆栈机指定一个名称
+        /// </summary>
+        /// <param name="vmName">堆栈的名称</param>
+        public void SetMachineName(string vmName)
+        {
+            this.StackName = vmName;
+        }
+        
         /// <summary>
         /// 将栈机恢复到初始状态
         /// </summary>
@@ -39,6 +49,7 @@ namespace Yuri.PlatformCore
                 ScriptName = sc.Scenario,
                 PC = 0,
                 IP = offset == null ? sc.Ctor : offset,
+                BP = sc.Ctor,
                 Argv = null,
                 BindingSceneName = sc.Scenario,
                 BindingFunctionName = null,
@@ -73,6 +84,7 @@ namespace Yuri.PlatformCore
                 ScriptName = sf.Callname,
                 PC = offset,
                 IP = sf.Sa,
+                BP = sf.Sa,
                 BindingFunction = sf,
                 Argv = args,
                 BindingFunctionName = String.Format("{0}?{1}", sf.GlobalName, this.coreStack.Count.ToString()),
@@ -96,6 +108,7 @@ namespace Yuri.PlatformCore
                 ScriptName = null,
                 PC = 0,
                 IP = ntr.interruptSA,
+                BP = ntr.interruptSA,
                 Argv = null,
                 BindingFunctionName = null,
                 BindingSceneName = null,
@@ -120,6 +133,7 @@ namespace Yuri.PlatformCore
                 ScriptName = null,
                 PC = 0,
                 IP = null,
+                BP = null,
                 Argv = null,
                 BindingFunctionName = null,
                 BindingSceneName = null,
@@ -143,6 +157,7 @@ namespace Yuri.PlatformCore
                 ScriptName = null,
                 PC = 0,
                 IP = null,
+                BP = null,
                 Argv = null,
                 BindingFunctionName = null,
                 BindingSceneName = null,
@@ -164,6 +179,7 @@ namespace Yuri.PlatformCore
                 ScriptName = null,
                 PC = 0,
                 IP = null,
+                BP = null,
                 Argv = null,
                 BindingFunctionName = null,
                 BindingSceneName = null,
@@ -196,6 +212,17 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
+        /// 弹空堆栈
+        /// </summary>
+        public void Clear()
+        {
+            while (this.coreStack.Count != 0)
+            {
+                this.Consume();
+            }
+        }
+
+        /// <summary>
         /// 返回调用栈中的项目计数
         /// </summary>
         /// <returns>调用栈计数</returns>
@@ -220,7 +247,7 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
-        /// 中断前指针
+        /// 中断或等待前指针
         /// </summary>
         public StackMachineFrame EBP
         {
@@ -269,6 +296,15 @@ namespace Yuri.PlatformCore
             {
                 return this.ESP.State != StackMachineState.FunctionCalling;
             }
+        }
+
+        /// <summary>
+        /// 该堆栈的名字
+        /// </summary>
+        public string StackName
+        {
+            get;
+            set;
         }
 
         /// <summary>

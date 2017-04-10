@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Windows;
 
 namespace Yuri.PlatformCore
@@ -8,7 +7,7 @@ namespace Yuri.PlatformCore
     /// 精灵描述类：用于画面管理和保存
     /// </summary>
     [Serializable]
-    internal class SpriteDescriptor
+    internal class SpriteDescriptor : CloneableDescriptor
     {
         /// <summary>
         /// 构造一个精灵
@@ -73,7 +72,7 @@ namespace Yuri.PlatformCore
         /// 获取或设置精灵的资源类型
         /// </summary>
         public ResourceType ResourceType { get; set; }
-
+        
         /// <summary>
         /// 获取或设置精灵的资源名
         /// </summary>

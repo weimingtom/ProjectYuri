@@ -11,7 +11,7 @@ namespace Yuri.PlatformCore
     /// <para>她是一个单例类，只有唯一实例</para>
     /// </summary>
     [Serializable]
-    internal class ScreenManager
+    internal class ScreenManager : ForkableState
     {
         /// <summary>
         /// 为屏幕增加一个背景精灵描述子
@@ -357,6 +357,16 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
+        /// 获取一个视窗的描述子
+        /// </summary>
+        /// <param name="vt">视窗类型</param>
+        /// <returns>描述子实例</returns>
+        public ViewportDescriptor GetViewboxDescriptor(ViewportType vt)
+        {
+            return this.viewboxDescVec[(int)vt];
+        }
+
+        /// <summary>
         /// 获取一个精灵的描述子
         /// </summary>
         /// <param name="id">精灵id</param>
@@ -409,7 +419,7 @@ namespace Yuri.PlatformCore
         /// 获取一个选择支描述子
         /// </summary>
         /// <param name="bbId">选择支id</param>
-        /// <returns描述子实例></returns>
+        /// <returns>描述子实例</returns>
         public BranchButtonDescriptor GetBranchButtonDescriptor(int id)
         {
             return this.branchDescVec[id];
@@ -421,6 +431,34 @@ namespace Yuri.PlatformCore
         public void Backlay()
         {
             CommonUtils.Swap<SpriteDescriptor>(this.backgroundDescVec, 0, 1);
+        }
+
+        /// <summary>
+        /// 初始化视窗向量
+        /// </summary>
+        public void InitViewboxes()
+        {
+            ViewportDescriptor vdTemplate = new ViewportDescriptor()
+            {
+                Left = 0,
+                Top = 0,
+                ScaleX = 1.0,
+                ScaleY = 1.0,
+                Angle = 0.0,
+                AnchorX = (double)GlobalDataContainer.GAME_WINDOW_WIDTH / 2.0,
+                AnchorY = (double)GlobalDataContainer.GAME_WINDOW_HEIGHT / 2.0
+            };
+            var vtBg = vdTemplate.Clone() as ViewportDescriptor;
+            vtBg.Type = ViewportType.VTBackground;
+            vtBg.ZIndex = GlobalDataContainer.GAME_Z_BACKGROUND;
+            this.viewboxDescVec[(int)ViewportType.VTBackground] = vtBg;
+            var vtPics = vdTemplate.Clone() as ViewportDescriptor;
+            vdTemplate.Type = ViewportType.VTPictures;
+            vdTemplate.ZIndex = GlobalDataContainer.GAME_Z_PICTURES;
+            this.viewboxDescVec[(int)ViewportType.VTPictures] = vtPics;
+            vdTemplate.Type = ViewportType.VTCharacterStand;
+            vdTemplate.ZIndex = GlobalDataContainer.GAME_Z_CHARACTERSTAND;
+            this.viewboxDescVec[(int)ViewportType.VTCharacterStand] = vdTemplate;
         }
 
         /// <summary>
@@ -488,12 +526,17 @@ namespace Yuri.PlatformCore
         /// </summary>
         private ScreenManager()
         {
-            this.backgroundDescVec = new List<SpriteDescriptor>();
-            this.characterDescVec = new List<SpriteDescriptor>();
-            this.pictureDescVec = new List<SpriteDescriptor>();
+            this.msgLayerDescVec = new List<MessageLayerDescriptor>();
             this.branchDescVec = new List<BranchButtonDescriptor>();
             this.buttonDescVec = new List<SpriteButtonDescriptor>();
-            this.msgLayerDescVec = new List<MessageLayerDescriptor>();
+            this.backgroundDescVec = new List<SpriteDescriptor>();
+            this.characterDescVec = new List<SpriteDescriptor>();
+            this.viewboxDescVec = new List<ViewportDescriptor>();
+            this.pictureDescVec = new List<SpriteDescriptor>();
+            for (int i = 0; i < 3; i++)
+            {
+                this.viewboxDescVec.Add(null);
+            }
             for (int i = 0; i < GlobalDataContainer.GAME_BACKGROUND_COUNT; i++)
             {
                 this.backgroundDescVec.Add(null);
@@ -514,6 +557,7 @@ namespace Yuri.PlatformCore
             {
                 this.buttonDescVec.Add(null);
             }
+            this.InitViewboxes();
             this.InitMessageLayerDescriptors();
         }
 
@@ -534,11 +578,61 @@ namespace Yuri.PlatformCore
         {
             return ScreenManager.synObject == null ? ScreenManager.synObject = new ScreenManager() : ScreenManager.synObject;
         }
-
+        
         /// <summary>
         /// 唯一实例
         /// </summary>
         private static ScreenManager synObject = null;
+
+        /// <summary>
+        /// 获取或设置场景镜头当期相对于立绘层的缩放比
+        /// </summary>
+        public double SCameraScale
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// 获取或设置场景镜头中央的屏幕分块行号
+        /// </summary>
+        public int SCameraCenterRow
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// 获取或设置场景镜头中央的屏幕分块列号
+        /// </summary>
+        public int SCameraCenterCol
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// 获取或设置场景镜头聚焦的屏幕分块行号
+        /// </summary>
+        public int SCameraFocusRow
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// 获取或设置场景镜头聚焦的屏幕分块列号
+        /// </summary>
+        public int SCameraFocusCol
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// 视窗描述向量
+        /// </summary>
+        private List<ViewportDescriptor> viewboxDescVec;
 
         /// <summary>
         /// 背景描述向量

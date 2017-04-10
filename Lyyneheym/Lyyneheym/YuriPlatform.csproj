@@ -40,9 +40,8 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Bass.Net, Version=2.4.11.1, Culture=neutral, PublicKeyToken=b7566c273e6ef480, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files (x86)\BASS.NET\v4.0\Bass.Net.dll</HintPath>
+    <Reference Include="Bass.Net">
+      <HintPath>.\Bass.Net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -67,6 +66,13 @@
     </ApplicationDefinition>
     <Compile Include="Director.cs" />
     <Compile Include="ILPackage\ConfigParser.cs" />
+    <Compile Include="PlatformCore\CloneableDescriptor.cs" />
+    <Compile Include="PlatformCore\ResourceCachePool.cs" />
+    <Compile Include="PlatformCore\RollbackManager.cs" />
+    <Compile Include="PlatformCore\SCamera.cs" />
+    <Compile Include="PlatformCore\StepStatePackage.cs" />
+    <Compile Include="PlatformCore\ViewportDescriptor.cs" />
+    <Compile Include="PlatformCore\YuriViewport.cs" />
     <Compile Include="Utils\CommonUtils.cs" />
     <Compile Include="Utils\IOUtils.cs" />
     <Compile Include="Utils\PackageUtils.cs" />
@@ -122,6 +128,7 @@
     </Compile>
     <None Include="app.config" />
     <None Include="PlatformClassDiagram.cd" />
+    <Compile Include="PlatformCore\ForkableState.cs" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
