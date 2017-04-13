@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
-using Yuri.YuriInterpreter.ILPackage;
+using Yuri.Yuriri;
 
 namespace Yuri.YuriInterpreter
 {
@@ -11,6 +11,8 @@ namespace Yuri.YuriInterpreter
     /// </summary>
     internal sealed class Pile
     {
+        private const string Encryptor = "yurayuri";
+
         /// <summary>
         /// 构造函数
         /// </summary>
@@ -120,7 +122,7 @@ namespace Yuri.YuriInterpreter
                     {
                         SceneAction sa = new SceneAction();
                         sa.Tag = mynode.Line.ToString() + "-" + mynode.Column.ToString();
-                        sa.Type = (SActionType)Enum.Parse(typeof(SActionType), "act_" + child.NodeSyntaxType.ToString().Replace("synr_", ""));
+                        sa.Type = (SActionType)Enum.Parse(typeof(SActionType), "act_" + child.NodeSyntaxType.ToString().Replace("synr_", String.Empty));
                         // 跳过增广文法节点，拷贝参数字典
                         if (child.NodeSyntaxType.ToString().StartsWith("synr_")
                             && child.ParamDict != null)
@@ -133,7 +135,7 @@ namespace Yuri.YuriInterpreter
                                 }
                                 else
                                 {
-                                    sa.ArgsDict.Add(kvp.Key, "");
+                                    sa.ArgsDict.Add(kvp.Key, String.Empty);
                                 }
                             }
                         }
@@ -255,7 +257,7 @@ namespace Yuri.YuriInterpreter
                     }
                     else
                     {
-                        mynode.Polish = "";
+                        mynode.Polish = String.Empty;
                     }
                     break;
                 case SyntaxType.case_wexpr_pi:
@@ -281,7 +283,7 @@ namespace Yuri.YuriInterpreter
                     }
                     else
                     {
-                        mynode.Polish = "";
+                        mynode.Polish = String.Empty;
                     }
                     break;
                 case SyntaxType.case_wmulti:
@@ -306,7 +308,7 @@ namespace Yuri.YuriInterpreter
                     }
                     else
                     {
-                        mynode.Polish = "";
+                        mynode.Polish = String.Empty;
                     }
                     break;
                 case SyntaxType.case_wunit:
@@ -356,14 +358,14 @@ namespace Yuri.YuriInterpreter
                         this.ConstructArgPolish(mynode.Children[1]); // 合取项
                         this.ConstructArgPolish(mynode.Children[2]); // 析取闭包
                         mynode.Polish = mynode.Children[1].Polish + mynode.Children[2].Polish;
-                        if (mynode.Children[2].Polish != "")
+                        if (mynode.Children[2].Polish != String.Empty)
                         {
                             mynode.Polish += " || ";
                         }
                     }
                     else
                     {
-                        mynode.Polish = "";
+                        mynode.Polish = String.Empty;
                     }
                     break;
                 case SyntaxType.case_conjunct:
@@ -377,14 +379,14 @@ namespace Yuri.YuriInterpreter
                         this.ConstructArgPolish(mynode.Children[1]); // 布尔项
                         this.ConstructArgPolish(mynode.Children[2]); // 合取闭包
                         mynode.Polish = mynode.Children[1].Polish + mynode.Children[2].Polish;
-                        if (mynode.Children[2].Polish != "")
+                        if (mynode.Children[2].Polish != String.Empty)
                         {
                             mynode.Polish += " && ";
                         }
                     }
                     else
                     {
-                        mynode.Polish = "";
+                        mynode.Polish = String.Empty;
                     }
                     break;
                 case SyntaxType.case_bool:
@@ -410,7 +412,7 @@ namespace Yuri.YuriInterpreter
                         string optype = mynode.Children[1].NodeValue; // 运算符
                         this.ConstructArgPolish(mynode.Children[0]); // 左边
                         this.ConstructArgPolish(mynode.Children[2]); // 右边
-                        mynode.Polish = "";
+                        mynode.Polish = String.Empty;
                         if (optype == "<>")
                         {
                             mynode.Polish = mynode.Children[0].Polish + mynode.Children[2].Polish + " <> ";
@@ -737,9 +739,9 @@ namespace Yuri.YuriInterpreter
         /// </summary>
         /// <param name="sceneItem">一个键值对，主场景序列头部和函数向量</param>
         /// <returns>场景实例</returns>
-        private PackageScene ConstructScene(KeyValuePair<SceneAction, List<SceneFunction>> sceneItem)
+        private Scene ConstructScene(KeyValuePair<SceneAction, List<SceneFunction>> sceneItem)
         {
-            return new PackageScene(this.scenario, sceneItem.Key, sceneItem.Value);
+            return new Scene(this.scenario, sceneItem.Key, sceneItem.Value, null);
         }
 
         /// <summary>
@@ -749,7 +751,7 @@ namespace Yuri.YuriInterpreter
         /// <returns>IL字符串</returns>
         private string ILGenerator(SceneAction saRoot)
         {
-            StringBuilder resSb = new StringBuilder("");
+            StringBuilder resSb = new StringBuilder(String.Empty);
             Stack<SceneAction> processStack = new Stack<SceneAction>();
             processStack.Push(saRoot);
             while (processStack.Count != 0)
@@ -771,7 +773,9 @@ namespace Yuri.YuriInterpreter
                         processStack.Push(topSa.TrueRouting[i]);
                     }
                 }
-                resSb.AppendLine(topSa.ToIL());
+                resSb.AppendLine(this.needEncryption
+                    ? YuriEncryptor.EncryptString(topSa.ToIL(), Pile.Encryptor)
+                    : topSa.ToIL());
             }
             return resSb.ToString();
         }
@@ -781,12 +785,14 @@ namespace Yuri.YuriInterpreter
         /// </summary>
         /// <param name="scene">场景实例</param>
         /// <returns>IL字符串</returns>
-        private string ILGenerator(PackageScene scene)
+        private string ILGenerator(Scene scene)
         {
             List<SceneFunction> sf = scene.FuncContainer;
             SceneAction mainSa = scene.Ctor;
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine(scene.GetILSign());
+            sb.AppendLine(this.needEncryption
+                ? YuriEncryptor.EncryptString(scene.GetILSign(), Pile.Encryptor)
+                : scene.GetILSign());
             sb.Append(this.ILGenerator(mainSa));
             foreach (SceneFunction scenefunc in sf)
             {
@@ -883,10 +889,10 @@ namespace Yuri.YuriInterpreter
                                 res = (Math.Abs(op1) > 1e-15) || (Math.Abs(op2) > 1e-15) ? 1 : 0;
                                 break;
                             case PolishItemType.CAL_EQUAL:
-                                res = op1 == op2 ? 1 : 0;
+                                res = Math.Abs(op1 - op2) < 1e-15 ? 1 : 0;
                                 break;
                             case PolishItemType.CAL_NOTEQUAL:
-                                res = op1 != op2 ? 1 : 0;
+                                res = Math.Abs(op1 - op2) > 1e-15 ? 1 : 0;
                                 break;
                             case PolishItemType.CAL_BIG:
                                 res = op1 > op2 ? 1 : 0;
@@ -908,7 +914,7 @@ namespace Yuri.YuriInterpreter
                     }
                     else
                     {
-                        string polishStackTrace = "";
+                        string polishStackTrace = String.Empty;
                         while (polishStack.Count != 0)
                         {
                             polishStackTrace = polishStack.Pop() + " ";
@@ -941,7 +947,7 @@ namespace Yuri.YuriInterpreter
         /// <returns>逆波兰式中的类型</returns>
         private PolishItemType GetPolishItemType(string item)
         {
-            if (item == null || item.Length == 0)
+            if (string.IsNullOrEmpty(item))
             {
                 return PolishItemType.NONE;
             }
@@ -1015,8 +1021,7 @@ namespace Yuri.YuriInterpreter
         private void Reset(string scenario)
         {
             this.scenario = scenario;
-            this.parseTree = new SyntaxTreeNode(SyntaxType.case_kotori);
-            this.parseTree.NodeName = "myKotori_Root";
+            this.parseTree = new SyntaxTreeNode(SyntaxType.case_kotori) { NodeName = "myKotori_Root" };
             this.parser.BlockStack.Push(this.parseTree);
         }
 
@@ -1043,6 +1048,11 @@ namespace Yuri.YuriInterpreter
         }
 
         /// <summary>
+        /// 是否加密
+        /// </summary>
+        public bool needEncryption = true;
+
+        /// <summary>
         /// 场景名称
         /// </summary>
         private string scenario = null;
@@ -1050,17 +1060,17 @@ namespace Yuri.YuriInterpreter
         /// <summary>
         /// 词法分析器
         /// </summary>
-        private Lexer lexer = null;
+        private readonly Lexer lexer = null;
         
         /// <summary>
         /// 语法分析器
         /// </summary>
-        private Parser parser = null;
+        private readonly Parser parser = null;
         
         /// <summary>
         /// 剧本场景实例
         /// </summary>
-        private PackageScene rootScene = null;
+        private Scene rootScene = null;
         
         /// <summary>
         /// 语法树根节点

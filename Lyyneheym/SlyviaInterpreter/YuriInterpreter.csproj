@@ -38,6 +38,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="YuriEncryptor.cs" />
     <Compile Include="Interpreter.cs" />
     <Compile Include="InterpreterException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -46,14 +47,14 @@
     <Compile Include="LL1ParseMap.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="Pile.cs" />
-    <Compile Include="ILPackage\Scene.cs" />
-    <Compile Include="ILPackage\SceneAction.cs" />
-    <Compile Include="ILPackage\SceneFunction.cs" />
     <Compile Include="SyntaxTreeNode.cs" />
     <Compile Include="Token.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="InterpreterClassDiagram.cd" />
+    <ProjectReference Include="..\Yuriri\Yuriri.csproj">
+      <Project>{2ce410d4-7eb7-473e-acc8-6ef39038188e}</Project>
+      <Name>Yuriri</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

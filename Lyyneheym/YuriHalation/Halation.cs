@@ -126,7 +126,7 @@ namespace Yuri
         public void ChangeCodePackage(string toRunnable, string parent)
         {
             RunnablePackage rp = null;
-            if (parent == "")
+            if (parent == String.Empty)
             {
                 rp = Halation.project.GetScene(toRunnable);
             }
@@ -150,7 +150,7 @@ namespace Yuri
         /// <summary>
         /// 正在编辑的可运行代码名称
         /// </summary>
-        public static string currentScriptName = "";
+        public static string currentScriptName = String.Empty;
 
         /// <summary>
         /// 代码树被选中节点
@@ -175,14 +175,14 @@ namespace Yuri
         public void DashParse()
         {
             // 保存全局配置
-            FileManager.SaveConfigData(Halation.projectFolder + "\\game.yuriconfig",
+            FileManager.SaveConfigData(Halation.projectFolder + "\\YuriConfig.dat",
                 Halation.GetNameAndValue<ConfigPackage>(Halation.project.Config));
             // 翻译可视化事件到脚本
             var scripts = CodeGenerator.GetInstance().Generate();
             FileManager.SaveByLineItem(Halation.projectFolder + "\\" + FileManager.DevURI_RT_SCENARIO, ".sls", scripts);
             // 编译
             Interpreter ip = new Interpreter(Halation.projectName, Halation.projectFolder + "\\" + FileManager.DevURI_RT_SCENARIO);
-            ip.Dash(InterpreterType.RELEASE_WITH_IL, 1);
+            ip.Dash(InterpreterType.RELEASE_WITH_IL, 4);
             ip.GenerateIL(Halation.projectFolder + "\\" + FileManager.DevURI_RT_SCENARIO + @"\main.sil");
         }
 
@@ -471,6 +471,12 @@ namespace Yuri
         public void DashIf(bool containElse, string expr, string op1, string opr, string op2)
         {
             IHalationCommand cmd = new IfCommand(Halation.CurrentSelectedLine, this.GetIndent(Halation.CurrentSelectedLine), Halation.currentCodePackage, containElse, expr, op1, opr, op2);
+            HalationInvoker.Dash(Halation.currentScriptName, cmd);
+        }
+
+        public void DashSCamera(string name, string r, string c, string ro)
+        {
+            IHalationCommand cmd = new SCameraCommand(Halation.CurrentSelectedLine, this.GetIndent(Halation.CurrentSelectedLine), Halation.currentCodePackage, name, r, c, ro);
             HalationInvoker.Dash(Halation.currentScriptName, cmd);
         }
         #endregion

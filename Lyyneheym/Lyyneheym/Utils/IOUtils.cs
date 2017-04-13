@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using Yuri.PlatformCore;
 
 namespace Yuri.Utils
 {
@@ -60,11 +61,11 @@ namespace Yuri.Utils
         /// <summary>
         /// 获得一个文件的字节序列
         /// </summary>
-        /// <param name="resourceURL">资源的URL</param>
+        /// <param name="resourceUrl">资源的URL</param>
         /// <returns>资源的字节序列</returns>
-        public static byte[] GetObjectBytes(Uri resourceURL)
+        public static byte[] GetObjectBytes(Uri resourceUrl)
         {
-            FileStream pakFs = new FileStream(resourceURL.LocalPath, FileMode.Open);
+            FileStream pakFs = new FileStream(resourceUrl.LocalPath, FileMode.Open);
             byte[] buffer = new byte[pakFs.Length];
             if (pakFs.Length >= Int32.MaxValue)
             {
@@ -94,17 +95,14 @@ namespace Yuri.Utils
             try
             {
                 Stream myStream = File.Open(savePath, FileMode.Create);
-                if (myStream == null)
-                {
-                    throw new IOException();
-                }
-                BinaryFormatter bf = new BinaryFormatter();
+                var bf = new BinaryFormatter();
                 bf.Serialize(myStream, instance);
                 myStream.Close();
             }
             catch (Exception ex)
             {
-                throw ex;
+                CommonUtils.ConsoleLine("Serialization failed. " + ex.ToString(), "IOUtils", OutputStyle.Error);
+                throw;
             }
             return true;
         }
@@ -119,17 +117,14 @@ namespace Yuri.Utils
             try
             {
                 Stream s = File.Open(loadPath, FileMode.Open);
-                if (s == null)
-                {
-                    throw new IOException();
-                }
-                BinaryFormatter bf = new BinaryFormatter();
-                object ob = bf.Deserialize(s);
+                var bf = new BinaryFormatter();
+                var ob = bf.Deserialize(s);
                 s.Close();
                 return ob;
             }
-            catch
+            catch (Exception ex)
             {
+                CommonUtils.ConsoleLine("Unserialization failed. " + ex.ToString(), "IOUtils", OutputStyle.Error);
                 return null;
             }
         }

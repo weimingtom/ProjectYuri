@@ -1,14 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Animation;
+using Yuri.PlatformCore.Audio;
+using Yuri.PlatformCore.Evaluator;
+using Yuri.PlatformCore.Graphic;
+using Yuri.PlatformCore.Graphic3D;
+using Yuri.PlatformCore.VM;
 using Yuri.Utils;
-using Yuri.ILPackage;
+using Yuri.Yuriri;
 
 namespace Yuri.PlatformCore
 {
@@ -27,11 +32,9 @@ namespace Yuri.PlatformCore
         /// <returns>Double实例</returns>
         private double ParseDouble(string polish, double nullValue)
         {
-            if (polish == "")
-            {
-                return nullValue;
-            }
-            return Convert.ToDouble(Director.RunMana.CalculatePolish(polish, this.VsmReference));
+            return polish == String.Empty
+                ? nullValue
+                : Convert.ToDouble(PolishEvaluator.Evaluate(polish, this.VsmReference));
         }
 
         /// <summary>
@@ -43,11 +46,9 @@ namespace Yuri.PlatformCore
         /// <returns>Int32实例</returns>
         private int ParseInt(string polish, int nullValue)
         {
-            if (polish == "")
-            {
-                return nullValue;
-            }
-            return (int)(Convert.ToDouble(Director.RunMana.CalculatePolish(polish, this.VsmReference)));
+            return polish == String.Empty
+                ? nullValue
+                : (int) (Convert.ToDouble(PolishEvaluator.Evaluate(polish, this.VsmReference)));
         }
 
         /// <summary>
@@ -59,11 +60,9 @@ namespace Yuri.PlatformCore
         /// <returns>String实例</returns>
         private string ParseString(string polish, string nullValue)
         {
-            if (polish == "")
-            {
-                return nullValue;
-            }
-            return Director.RunMana.CalculatePolish(polish, this.VsmReference).ToString();
+            return polish == String.Empty
+                ? nullValue
+                : PolishEvaluator.Evaluate(polish, this.VsmReference).ToString();
         }
 
         /// <summary>
@@ -75,11 +74,7 @@ namespace Yuri.PlatformCore
         /// <returns>String实例</returns>
         private string ParseDirectString(string polish, string nullValue)
         {
-            if (polish == "")
-            {
-                return nullValue;
-            }
-            return polish;
+            return polish == String.Empty? nullValue : polish;
         }
         #endregion
 
@@ -89,26 +84,20 @@ namespace Yuri.PlatformCore
         /// </summary>
         public KeyStates GetKeyboardState(Key key)
         {
-            if (UpdateRender.KS_KEY_Dict.ContainsKey(key) == false)
-            {
-                UpdateRender.KS_KEY_Dict.Add(key, KeyStates.None);
-                return KeyStates.None;
-            }
             return UpdateRender.KS_KEY_Dict[key];
         }
 
         /// <summary>
         /// 设置键盘上某个按键当前状态
         /// </summary>
-        public void SetKeyboardState(Key key, KeyStates state)
+        /// <param name="e">事件对象</param>
+        /// <param name="isDown">是否按下</param>
+        public void SetKeyboardState(KeyEventArgs e, bool isDown)
         {
-            UpdateRender.KS_KEY_Dict[key] = state;
-            Director.RunMana.Assignment("&kb_" + key.ToString(), "1", this.VsmReference);
-            if ((UpdateRender.KS_KEY_Dict[Key.LeftAlt] == KeyStates.Down || UpdateRender.KS_KEY_Dict[Key.RightAlt] == KeyStates.Down)
-                && UpdateRender.KS_KEY_Dict[Key.F4] == KeyStates.Down)
-            {
-                this.Shutdown();
-            }
+            UpdateRender.KS_KEY_Dict[e.Key] = isDown ? KeyStates.Down : KeyStates.None;
+            Director.RunMana.Assignment("&kb_" + e.Key.ToString(), e.IsDown ? "1" : "0", this.VsmReference);
+            // 触发更新事件
+            this.UpdateForKeyboardState();
         }
 
         /// <summary>
@@ -145,12 +134,13 @@ namespace Yuri.PlatformCore
             // 上滚
             if (delta > 0)
             {
-                RollbackManager.SteadyBackward();
+                 RollbackManager.SteadyBackward();
             }
             // 下滚
             else
             {
                 //RollbackManager.SteadyForward(true, null, null);
+                this.ForwardToNextSteadyState();
             }
         }
 
@@ -162,12 +152,12 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 鼠标按钮状态字典
         /// </summary>
-        private static Dictionary<MouseButton, MouseButtonState> KS_MOUSE_Dict = new Dictionary<MouseButton, MouseButtonState>();
+        private static readonly Dictionary<MouseButton, MouseButtonState> KS_MOUSE_Dict = new Dictionary<MouseButton, MouseButtonState>();
 
         /// <summary>
         /// 键盘按钮状态字典
         /// </summary>
-        private static Dictionary<Key, KeyStates> KS_KEY_Dict = new Dictionary<Key, KeyStates>();
+        private static readonly Dictionary<Key, KeyStates> KS_KEY_Dict = new Dictionary<Key, KeyStates>();
         #endregion
 
         #region 周期性调用
@@ -179,45 +169,10 @@ namespace Yuri.PlatformCore
             // 按下了鼠标左键
             if (UpdateRender.KS_MOUSE_Dict[MouseButton.Left] == MouseButtonState.Pressed)
             {
-                // 要松开才生效的情况下
-                if (this.MouseLeftUpFlag == true)
+                // 要松开左键，并且场景镜头动画播放完毕才生效
+                if (this.MouseLeftUpFlag)
                 {
-                    // 正在显示对话
-                    if (this.isShowingDialog && Director.ButtonClickingFlag == false)
-                    {
-                        // 如果还在播放打字动画就跳跃
-                        if (this.MsgStoryboardDict.ContainsKey(0) && this.MsgStoryboardDict[0].GetCurrentProgress() != 1.0)
-                        {
-                            this.MsgStoryboardDict[0].SkipToFill();
-                            this.MouseLeftUpFlag = false;
-                            return;
-                        }
-                        // 判断是否已经完成全部趟的显示
-                        else if (this.pendingDialogQueue.Count == 0)
-                        {
-                            // 弹掉用户等待状态
-                            Director.RunMana.ExitCall(Director.RunMana.CallStack);
-                            this.isShowingDialog = false;
-                            this.dialogPreStr = String.Empty;
-                            // 非连续对话时消除对话框
-                            if (this.IsContinousDialog == false)
-                            {
-                                this.viewMana.GetMessageLayer(0).Visibility = Visibility.Hidden;
-                                this.HideMessageTria();
-                            }
-                            // 截断语音
-                            this.Stopvocal();
-                            // 标记为非回滚
-                            RollbackManager.IsRollingBack = false;
-
-                        }
-                        // 正在显示对话则向前推进一个趟
-                        else
-                        {
-                            this.viewMana.GetMessageLayer(0).Visibility = Visibility.Visible;
-                            this.DrawDialogRunQueue();
-                        }
-                    }
+                    this.ForwardToNextSteadyState();
                 }
                 // 连续按压生效的情况下
                 else
@@ -273,9 +228,70 @@ namespace Yuri.PlatformCore
         /// </summary>
         public void UpdateForKeyboardState()
         {
-            
+            if (UpdateRender.KS_KEY_Dict[Key.S] == KeyStates.Down && ViewPageManager.IsAtMainStage())
+            {
+                Canvas mainCanvas = ViewManager.Is3DStage ? ViewManager.View3D.BO_MainGrid : ViewManager.View2D.BO_MainGrid;
+                ViewManager.RenderFrameworkElementToJPEG(mainCanvas, GlobalConfigContext.GAME_SAVE_DIR + "\\tempSnapshot.jpg");
+                PageView.SLPage p = (PageView.SLPage)ViewPageManager.RetrievePage("SavePage");
+                p.ReLoadFileInfo();
+                ViewPageManager.NavigateTo("SavePage");
+            }
+            if (UpdateRender.KS_KEY_Dict[Key.L] == KeyStates.Down && ViewPageManager.IsAtMainStage())
+            {
+                Canvas mainCanvas = ViewManager.Is3DStage ? ViewManager.View3D.BO_MainGrid : ViewManager.View2D.BO_MainGrid;
+                ViewManager.RenderFrameworkElementToJPEG(mainCanvas, GlobalConfigContext.GAME_SAVE_DIR + "\\tempSnapshot.jpg");
+                PageView.SLPage p = (PageView.SLPage)ViewPageManager.RetrievePage("LoadPage");
+                p.ReLoadFileInfo();
+                ViewPageManager.NavigateTo("LoadPage");
+            }
         }
-        
+
+        /// <summary>
+        /// 推进一个稳定状态
+        /// </summary>
+        private void ForwardToNextSteadyState()
+        {
+            if (ViewManager.Is3DStage && SCamera3D.IsAnyAnimation == false ||
+                ViewManager.Is3DStage == false && SCamera2D.IsAnyAnimation == false)
+            {
+                // 正在显示对话
+                if (this.isShowingDialog && Director.IsButtonClicking == false)
+                {
+                    // 如果还在播放打字动画就跳跃
+                    if (this.MsgStoryboardDict.ContainsKey(0) && this.MsgStoryboardDict[0].GetCurrentProgress() != 1.0)
+                    {
+                        this.MsgStoryboardDict[0].SkipToFill();
+                        this.MouseLeftUpFlag = false;
+                        return;
+                    }
+                    // 判断是否已经完成全部趟的显示
+                    else if (this.pendingDialogQueue.Count == 0)
+                    {
+                        // 弹掉用户等待状态
+                        Director.RunMana.ExitCall(Director.RunMana.CallStack);
+                        this.isShowingDialog = false;
+                        this.dialogPreStr = String.Empty;
+                        // 非连续对话时消除对话框
+                        if (this.IsContinousDialog == false)
+                        {
+                            this.viewMana.GetMessageLayer(0).Visibility = Visibility.Hidden;
+                            this.HideMessageTria();
+                        }
+                        // 截断语音
+                        this.Stopvocal();
+                        // 标记为非回滚
+                        RollbackManager.IsRollingBack = false;
+                    }
+                    // 正在显示对话则向前推进一个趟
+                    else
+                    {
+                        this.viewMana.GetMessageLayer(0).Visibility = Visibility.Visible;
+                        this.DrawDialogRunQueue();
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// 鼠标左键是否松开标志位
         /// </summary>
@@ -328,12 +344,12 @@ namespace Yuri.PlatformCore
                     }
                 }
                 // 回滚时不打字而是直接显示
-                //if (RollbackManager.IsRollingBack)
-                //{
-                //    wordDelay = false;
-                //}
+                if (RollbackManager.IsRollingBack)
+                {
+                    wordDelay = false;
+                }
                 // 打字动画
-                this.TypeWriter(0, this.dialogPreStr, currentRun, this.viewMana.GetMessageLayer(0).DisplayBinding, wordDelay ? GlobalDataContainer.GAME_MSG_TYPING_DELAY : 0);
+                this.TypeWriter(0, this.dialogPreStr, currentRun, this.viewMana.GetMessageLayer(0).DisplayBinding, wordDelay ? GlobalConfigContext.GAME_MSG_TYPING_DELAY : 0);
                 this.dialogPreStr += currentRun;
             }
         }
@@ -394,7 +410,6 @@ namespace Yuri.PlatformCore
         {
             this.HideMessageTria();
             Storyboard MsgLayerTypingStory = new Storyboard();
-            DiscreteStringKeyFrame discreteStringKeyFrame;
             StringAnimationUsingKeyFrames stringAnimationUsingKeyFrames = new StringAnimationUsingKeyFrames();
             Duration aniDuration = new Duration(TimeSpan.FromMilliseconds(wordTimeSpan * appendString.Length));
             stringAnimationUsingKeyFrames.Duration = aniDuration;
@@ -402,7 +417,7 @@ namespace Yuri.PlatformCore
             string tmp = orgString;
             foreach (char c in appendString)
             {
-                discreteStringKeyFrame = new DiscreteStringKeyFrame();
+                var discreteStringKeyFrame = new DiscreteStringKeyFrame();
                 discreteStringKeyFrame.KeyTime = KeyTime.Paced;
                 tmp += c;
                 discreteStringKeyFrame.Value = tmp;
@@ -421,7 +436,7 @@ namespace Yuri.PlatformCore
         /// </summary>
         private void TypeWriterAnimationCompletedCallback(object sender, EventArgs e)
         {
-            if (this.MsgStoryboardDict.ContainsKey(0) && this.MsgStoryboardDict[0].GetCurrentProgress() == 1.0)
+            if (this.MsgStoryboardDict.ContainsKey(0) && Math.Abs(this.MsgStoryboardDict[0].GetCurrentProgress() - 1.0) < 0.01)
             {
                 this.ShowMessageTria();
                 this.BeginMessageTriaUpDownAnimation();
@@ -433,19 +448,28 @@ namespace Yuri.PlatformCore
         /// </summary>
         private void InitMsgLayerTria()
         {
-            this.MainMsgTriangleSprite = ResourceManager.GetInstance().GetPicture(GlobalDataContainer.GAME_MESSAGELAYER_TRIA_FILENAME, new Int32Rect(-1, 0, 0, 0));
+            this.MainMsgTriangleSprite = ResourceManager.GetInstance().GetPicture(
+                GlobalConfigContext.GAME_MESSAGELAYER_TRIA_FILENAME, ResourceManager.FullImageRect);
             Image TriaView = new Image();
             BitmapImage bmp = MainMsgTriangleSprite.SpriteBitmapImage;
             this.MainMsgTriangleSprite.DisplayBinding = TriaView;
+            this.MainMsgTriangleSprite.AnimationElement = TriaView;
             TriaView.Width = bmp.PixelWidth;
             TriaView.Height = bmp.PixelHeight;
             TriaView.Source = bmp;
             TriaView.Visibility = Visibility.Hidden;
             TriaView.RenderTransform = new TranslateTransform();
-            Canvas.SetLeft(TriaView, GlobalDataContainer.GAME_MESSAGELAYER_TRIA_X);
-            Canvas.SetTop(TriaView, GlobalDataContainer.GAME_MESSAGELAYER_TRIA_Y);
-            Canvas.SetZIndex(TriaView, GlobalDataContainer.GAME_Z_MESSAGELAYER + 100);
-            this.view.BO_MainGrid.Children.Add(this.MainMsgTriangleSprite.DisplayBinding);
+            Canvas.SetLeft(TriaView, GlobalConfigContext.GAME_MESSAGELAYER_TRIA_X);
+            Canvas.SetTop(TriaView, GlobalConfigContext.GAME_MESSAGELAYER_TRIA_Y);
+            Canvas.SetZIndex(TriaView, GlobalConfigContext.GAME_Z_MESSAGELAYER + 100);
+            if (ViewManager.Is3DStage)
+            {
+                this.view3d.BO_MainGrid.Children.Add(this.MainMsgTriangleSprite.DisplayBinding);
+            }
+            else
+            {
+                this.view2d.BO_MainGrid.Children.Add(this.MainMsgTriangleSprite.DisplayBinding);
+            }
         }
 
         /// <summary>
@@ -491,17 +515,7 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 获取当前是否正在显示对话
         /// </summary>
-        public bool IsShowingDialog
-        {
-            get
-            {
-                return this.isShowingDialog;
-            }
-            private set
-            {
-                this.isShowingDialog = value;
-            }
-        }
+        public bool IsShowingDialog => this.isShowingDialog;
 
         /// <summary>
         /// 是否下一动作仍为对话
@@ -531,16 +545,11 @@ namespace Yuri.PlatformCore
 
         #region 渲染器类自身相关方法和引用
         /// <summary>
-        /// 为更新器设置作用窗体
+        /// 初始化前端显示
         /// </summary>
-        /// <param name="mw">窗体引用</param>
-        public void SetMainWindow(MainWindow mw)
+        public void ViewLoaded()
         {
-            if (mw != null)
-            {
-                this.view = mw;
-                this.ViewLoadedInit();
-            }
+            this.ViewLoadedInit();
         }
 
         /// <summary>
@@ -548,8 +557,15 @@ namespace Yuri.PlatformCore
         /// </summary>
         private void ViewLoadedInit()
         {
-            // 为视窗管理设置引用
-            this.viewMana.SetMainWndReference(this.view);
+            // 初始化视窗
+            if (GlobalConfigContext.GAME_IS3D)
+            {
+                this.viewMana.InitViewport3D();
+            }
+            else
+            {
+                this.viewMana.InitViewport2D();
+            }
             // 初始化小三角
             this.InitMsgLayerTria();
             // 初始化文本层
@@ -557,7 +573,7 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
-        /// 渲染类构造器
+        /// 构造器：创建一个新的画音渲染器
         /// </summary>
         /// <param name="vsm">关于哪个调用堆栈做动作</param>
         public UpdateRender(StackMachine vsm)
@@ -565,15 +581,18 @@ namespace Yuri.PlatformCore
             // 绑定调用堆栈
             this.VsmReference = vsm;
             // 初始化鼠标和键盘变量
-            if (UpdateRender.KS_MOUSE_Dict.ContainsKey(MouseButton.Left) == false)
+            lock (UpdateRender.KS_MOUSE_Dict)
             {
-                UpdateRender.KS_MOUSE_Dict[MouseButton.Left] = MouseButtonState.Released;
-                UpdateRender.KS_MOUSE_Dict[MouseButton.Middle] = MouseButtonState.Released;
-                UpdateRender.KS_MOUSE_Dict[MouseButton.Right] = MouseButtonState.Released;
-                foreach (var t in Enum.GetNames(typeof(Key)))
+                if (UpdateRender.KS_MOUSE_Dict.ContainsKey(MouseButton.Left) == false)
                 {
-                    UpdateRender.KS_KEY_Dict[(Key)Enum.Parse(typeof(Key), t)] = KeyStates.None;
-                    Director.RunMana.Assignment("&kb_" + t, "0", vsm);
+                    UpdateRender.KS_MOUSE_Dict[MouseButton.Left] = MouseButtonState.Released;
+                    UpdateRender.KS_MOUSE_Dict[MouseButton.Middle] = MouseButtonState.Released;
+                    UpdateRender.KS_MOUSE_Dict[MouseButton.Right] = MouseButtonState.Released;
+                    foreach (var t in Enum.GetNames(typeof(Key)))
+                    {
+                        UpdateRender.KS_KEY_Dict[(Key) Enum.Parse(typeof(Key), t)] = KeyStates.None;
+                        Director.RunMana.Assignment("&kb_" + t, "0", vsm);
+                    }
                 }
             }
         }
@@ -584,24 +603,29 @@ namespace Yuri.PlatformCore
         public StackMachine VsmReference = null;
 
         /// <summary>
-        /// 主窗体引用
+        /// 2D主舞台的引用
         /// </summary>
-        private MainWindow view = null;
+        private PageView.Stage2D view2d => (PageView.Stage2D)ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage);
+
+        /// <summary>
+        /// 3D主舞台的引用
+        /// </summary>
+        private PageView.Stage3D view3d => (PageView.Stage3D)ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage);
 
         /// <summary>
         /// 音乐引擎
         /// </summary>
-        private Musician musician = Musician.GetInstance();
+        private readonly Musician musician = Musician.GetInstance();
 
         /// <summary>
         /// 资源管理器
         /// </summary>
-        private ResourceManager resMana = ResourceManager.GetInstance();
+        private readonly ResourceManager resMana = ResourceManager.GetInstance();
 
         /// <summary>
         /// 视窗管理器
         /// </summary>
-        private ViewManager viewMana = ViewManager.GetInstance();
+        private readonly ViewManager viewMana = ViewManager.GetInstance();
         #endregion
 
         #region 演绎函数
@@ -609,92 +633,90 @@ namespace Yuri.PlatformCore
         /// 接受一个场景动作并演绎她
         /// </summary>
         /// <param name="action">场景动作实例</param>
-        public void Accept(SceneAction action)
+        public void Execute(SceneAction action)
         {
-            switch (action.aType)
+            switch (action.Type)
             {
                 case SActionType.act_a:
                     this.A(
-                        this.ParseDirectString(action.argsDict["name"], ""),
-                        this.ParseInt(action.argsDict["vid"], -1),
-                        this.ParseDirectString(action.argsDict["face"], ""),
-                        this.ParseDirectString(action.argsDict["loc"], "")
+                        this.ParseDirectString(action.ArgsDict["name"], String.Empty),
+                        this.ParseInt(action.ArgsDict["vid"], -1),
+                        this.ParseDirectString(action.ArgsDict["face"], String.Empty),
+                        this.ParseDirectString(action.ArgsDict["loc"], String.Empty)
                         );
                     break;
                 case SActionType.act_bg:
                     this.Background(
-                        this.ParseInt(action.argsDict["id"], 0),
-                        this.ParseDirectString(action.argsDict["filename"], ""),
-                        this.ParseDouble(action.argsDict["x"], 0),
-                        this.ParseDouble(action.argsDict["y"], 0),
-                        this.ParseDouble(action.argsDict["opacity"], 1),
-                        this.ParseDouble(action.argsDict["xscale"], 1),
-                        this.ParseDouble(action.argsDict["yscale"], 1),
-                        this.ParseDouble(action.argsDict["ro"], 0),
+                        this.ParseInt(action.ArgsDict["id"], 0),
+                        this.ParseDirectString(action.ArgsDict["filename"], String.Empty),
+                        this.ParseDouble(action.ArgsDict["x"], 0),
+                        this.ParseDouble(action.ArgsDict["y"], 0),
+                        this.ParseDouble(action.ArgsDict["opacity"], 1),
+                        this.ParseDouble(action.ArgsDict["xscale"], 1),
+                        this.ParseDouble(action.ArgsDict["yscale"], 1),
+                        this.ParseDouble(action.ArgsDict["ro"], 0),
                         SpriteAnchorType.Center,
                         new Int32Rect(-1, 0, 0, 0)
                         );
                     break;
                 case SActionType.act_picture:
                     this.Picture(
-                        this.ParseInt(action.argsDict["id"], 0),
-                        this.ParseDirectString(action.argsDict["filename"], ""),
-                        this.ParseDouble(action.argsDict["x"], 0),
-                        this.ParseDouble(action.argsDict["y"], 0),
-                        this.ParseDouble(action.argsDict["opacity"], 1),
-                        this.ParseDouble(action.argsDict["xscale"], 1),
-                        this.ParseDouble(action.argsDict["yscale"], 1),
-                        this.ParseDouble(action.argsDict["ro"], 0),
+                        this.ParseInt(action.ArgsDict["id"], 0),
+                        this.ParseDirectString(action.ArgsDict["filename"], String.Empty),
+                        this.ParseDouble(action.ArgsDict["x"], 0),
+                        this.ParseDouble(action.ArgsDict["y"], 0),
+                        this.ParseDouble(action.ArgsDict["opacity"], 1),
+                        this.ParseDouble(action.ArgsDict["xscale"], 1),
+                        this.ParseDouble(action.ArgsDict["yscale"], 1),
+                        this.ParseDouble(action.ArgsDict["ro"], 0),
                         SpriteAnchorType.Center,
                         new Int32Rect(-1, 0, 0, 0)
                         );
                     break;
                 case SActionType.act_move:
-                    string moveResType = action.argsDict["name"];
+                    string moveResType = action.ArgsDict["name"];
                     this.Move(
-                        this.ParseInt(action.argsDict["id"], 0),
+                        this.ParseInt(action.ArgsDict["id"], 0),
                         moveResType == "picture" ? ResourceType.Pictures : (moveResType == "stand" ? ResourceType.Stand : ResourceType.Background),
-                        this.ParseDirectString(action.argsDict["target"], ""),
-                        this.ParseDouble(action.argsDict["dash"], 1),
-                        this.ParseDouble(action.argsDict["acc"], 0),
-                        TimeSpan.FromMilliseconds(this.ParseDouble(action.argsDict["time"], 0))
+                        this.ParseDirectString(action.ArgsDict["target"], String.Empty),
+                        this.ParseDouble(action.ArgsDict["dash"], 1),
+                        this.ParseDouble(action.ArgsDict["acc"], 0),
+                        TimeSpan.FromMilliseconds(this.ParseDouble(action.ArgsDict["time"], 0))
                         );
                     break;
                 case SActionType.act_deletepicture:
                     this.Deletepicture(
-                        this.ParseInt(action.argsDict["id"], -1),
+                        this.ParseInt(action.ArgsDict["id"], -1),
                         ResourceType.Pictures
                         );
                     break;
                 case SActionType.act_cstand:
                     this.Cstand(
-                        this.ParseInt(action.argsDict["id"], 0),
-                        String.Format("{0}_{1}.png", action.argsDict["name"], action.argsDict["face"]),
-                        this.ParseDouble(action.argsDict["x"], 0),
-                        this.ParseDouble(action.argsDict["y"], 0),
-                        this.ParseDouble(action.argsDict["opacity"], 1),
-                        this.ParseDouble(action.argsDict["xscale"], 1),
-                        this.ParseDouble(action.argsDict["yscale"], 1),
-                        this.ParseDouble(action.argsDict["ro"], 0),
-                        action.argsDict["anchor"] == "" ? (action.argsDict["anchor"] == "center" ? SpriteAnchorType.Center : SpriteAnchorType.LeftTop) : SpriteAnchorType.Center,
+                        this.ParseInt(action.ArgsDict["id"], 0),
+                        String.Format("{0}_{1}.png", action.ArgsDict["name"], action.ArgsDict["face"]),
+                        this.ParseDouble(action.ArgsDict["x"], 0),
+                        this.ParseDouble(action.ArgsDict["y"], 0),
+                        1,
+                        this.ParseInt(action.ArgsDict["loc"], 0),
+                        SpriteAnchorType.Center,
                         new Int32Rect(0, 0, 0, 0)
                         );
                     break;
                 case SActionType.act_deletecstand:
                     this.Deletecstand(
-                        (CharacterStandType)this.ParseInt(action.argsDict["id"], 5)
+                        this.ParseInt(action.ArgsDict["id"], 0)
                         );
                     break;
                 case SActionType.act_se:
                     this.Se(
-                        this.ParseDirectString(action.argsDict["filename"], ""),
-                        this.ParseDouble(action.argsDict["vol"], 1000)
+                        this.ParseDirectString(action.ArgsDict["filename"], String.Empty),
+                        this.ParseDouble(action.ArgsDict["vol"], 1000)
                         );
                     break;
                 case SActionType.act_bgm:
                     this.Bgm(
-                        this.ParseDirectString(action.argsDict["filename"], ""),
-                        this.ParseDouble(action.argsDict["vol"], 1000)
+                        this.ParseDirectString(action.ArgsDict["filename"], String.Empty),
+                        this.ParseDouble(action.ArgsDict["vol"], 1000)
                         );
                     break;
                 case SActionType.act_stopbgm:
@@ -702,8 +724,8 @@ namespace Yuri.PlatformCore
                     break;
                 case SActionType.act_vocal:
                     this.Vocal(
-                        this.ParseDirectString(action.argsDict["name"], ""),
-                        this.ParseInt(action.argsDict["vid"], -1),
+                        this.ParseDirectString(action.ArgsDict["name"], String.Empty),
+                        this.ParseInt(action.ArgsDict["vid"], -1),
                         this.musician.VocalDefaultVolume
                         );
                     break;
@@ -714,26 +736,33 @@ namespace Yuri.PlatformCore
                     break;
                 case SActionType.act_save:
                     this.Save(
-                        this.ParseString(action.argsDict["filename"], "autosave")
+                        this.ParseString(action.ArgsDict["filename"], "autosave")
                         );
                     break;
                 case SActionType.act_load:
                     this.Load(
-                        this.ParseString(action.argsDict["filename"], "autosave")
+                        this.ParseString(action.ArgsDict["filename"], "autosave")
+                        );
+                    break;
+                case SActionType.act_notify:
+                    this.Notify(
+                        this.ParseDirectString(action.ArgsDict["name"], String.Empty),
+                        this.ParseDirectString(action.ArgsDict["target"], String.Empty),
+                        this.ParseDirectString(action.ArgsDict["filename"], String.Empty)
                         );
                     break;
                 case SActionType.act_label:
                     break;
                 case SActionType.act_switch:
                     this.Switch(
-                        this.ParseInt(action.argsDict["id"], 0),
-                        this.ParseDirectString(action.argsDict["state"], "on") == "on"
+                        this.ParseInt(action.ArgsDict["id"], 0),
+                        this.ParseDirectString(action.ArgsDict["state"], "on") == "on"
                         );
                     break;
                 case SActionType.act_var:
                     this.Var(
-                        this.ParseDirectString(action.argsDict["name"], "$__LyynehermTempVar"),
-                        this.ParseDirectString(action.argsDict["dash"], "1")
+                        this.ParseDirectString(action.ArgsDict["name"], "$__LyynehermTempVar"),
+                        this.ParseDirectString(action.ArgsDict["dash"], "1")
                         );
                     break;
                 case SActionType.act_break:
@@ -746,60 +775,68 @@ namespace Yuri.PlatformCore
                     break;
                 case SActionType.act_branch:
                     this.Branch(
-                        this.ParseDirectString(action.argsDict["link"], "")
+                        this.ParseDirectString(action.ArgsDict["link"], String.Empty)
                         );
                     break;
                 case SActionType.act_titlepoint:
                     break;
                 case SActionType.act_trans:
                     this.Trans(
-                        this.ParseDirectString(action.argsDict["name"], "Fade")
+                        this.ParseDirectString(action.ArgsDict["name"], "Fade")
                         );
                     break;
                 case SActionType.act_button:
                     this.Button(
-                        this.ParseInt(action.argsDict["id"], 0),
+                        this.ParseInt(action.ArgsDict["id"], 0),
                         true,
-                        this.ParseDouble(action.argsDict["x"], 0),
-                        this.ParseDouble(action.argsDict["y"], 0),
-                        this.ParseDirectString(action.argsDict["target"], ""),
-                        this.ParseDirectString(action.argsDict["sign"], ""),
-                        this.ParseDirectString(action.argsDict["normal"], ""),
-                        this.ParseDirectString(action.argsDict["over"], ""),
-                        this.ParseDirectString(action.argsDict["on"], ""),
-                        this.ParseDirectString(action.argsDict["type"], "once")
+                        this.ParseDouble(action.ArgsDict["x"], 0),
+                        this.ParseDouble(action.ArgsDict["y"], 0),
+                        this.ParseDirectString(action.ArgsDict["target"], String.Empty),
+                        this.ParseDirectString(action.ArgsDict["sign"], String.Empty),
+                        this.ParseDirectString(action.ArgsDict["normal"], String.Empty),
+                        this.ParseDirectString(action.ArgsDict["over"], String.Empty),
+                        this.ParseDirectString(action.ArgsDict["on"], String.Empty),
+                        this.ParseDirectString(action.ArgsDict["type"], "once")
                         );
                     break;
                 case SActionType.act_deletebutton:
                     this.Deletebutton(
-                        this.ParseInt(action.argsDict["id"], -1)
+                        this.ParseInt(action.ArgsDict["id"], -1)
                         );
                     break;
                 case SActionType.act_style:
                     break;
                 case SActionType.act_msglayer:
                     this.MsgLayer(
-                        this.ParseInt(action.argsDict["id"], 0)
+                        this.ParseInt(action.ArgsDict["id"], 0)
                         );
                     break;
                 case SActionType.act_msglayeropt:
-                    var dashMsgoptItem = Director.RunMana.CalculatePolish(action.argsDict["dash"], this.VsmReference);
+                    var dashMsgoptItem = PolishEvaluator.Evaluate(action.ArgsDict["dash"], this.VsmReference);
                     this.MsgLayerOpt(
-                        this.ParseInt(action.argsDict["id"], 0),
-                        this.ParseDirectString(action.argsDict["target"], ""),
-                        dashMsgoptItem == null ? "" : dashMsgoptItem.ToString()
+                        this.ParseInt(action.ArgsDict["id"], 0),
+                        this.ParseDirectString(action.ArgsDict["target"], String.Empty),
+                        dashMsgoptItem?.ToString() ?? String.Empty
+                        );
+                    break;
+                case SActionType.act_scamera:
+                    this.Scamera(
+                        this.ParseDirectString(action.ArgsDict["name"], String.Empty),
+                        this.ParseInt(action.ArgsDict["x"], 0),
+                        this.ParseInt(action.ArgsDict["y"], GlobalConfigContext.GAME_SCAMERA_SCR_ROWCOUNT / 2 ),
+                        this.ParseDouble(action.ArgsDict["ro"], 0)
                         );
                     break;
                 case SActionType.act_draw:
                     this.DrawCommand(
-                        this.ParseInt(action.argsDict["id"], 0),
-                        this.ParseDirectString(action.argsDict["dash"], "")
+                        this.ParseInt(action.ArgsDict["id"], 0),
+                        this.ParseDirectString(action.ArgsDict["dash"], String.Empty)
                         );
                     break;
                 case SActionType.act_dialog:
                     this.Dialog(
-                        action.aTag.Substring(0, action.aTag.Length - 2),
-                        action.aTag.Last() == '1'
+                        action.Tag.Substring(0, action.Tag.Length - 2),
+                        action.Tag.Last() == '1'
                         );
                     break;
                 default:
@@ -813,7 +850,7 @@ namespace Yuri.PlatformCore
         public void Shutdown()
         {
             CommonUtils.ConsoleLine("Shutdown is called", "UpdateRender", OutputStyle.Important);
-            this.view.Close();
+            ViewManager.GetWindowReference()?.Close();
         }
 
         /// <summary>
@@ -829,6 +866,7 @@ namespace Yuri.PlatformCore
         /// </summary>
         /// <remarks>若要强行修改对话框中的内容，请使用DrawStringToMsgLayer方法</remarks>
         /// <param name="dialogStr">要显示的文本</param>
+        /// <param name="continous">是否连续对话</param>
         private void Dialog(string dialogStr, bool continous)
         {
             // 清除上一次的显示缓存
@@ -880,7 +918,7 @@ namespace Yuri.PlatformCore
         /// <param name="locStr">立绘位置</param>
         private void A(string name, int vid, string face, string locStr)
         {
-            if (face != "")
+            if (face != String.Empty)
             {
                 this.Cstand(-1, String.Format("{0}_{1}.png", name, face), locStr, 1, 1, 1, 0, SpriteAnchorType.Center, new Int32Rect(0, 0, 0, 0));
             }
@@ -896,7 +934,7 @@ namespace Yuri.PlatformCore
         /// <param name="breakSa">中断循环动作实例</param>
         private void Break(SceneAction breakSa)
         {
-            Director.RunMana.CallStack.ESP.IP = breakSa.next;
+            Director.RunMana.CallStack.ESP.MircoStep(breakSa.Next);
         }
 
         /// <summary>
@@ -918,14 +956,14 @@ namespace Yuri.PlatformCore
             {
                 ResourceName = normal
             }, overDesc = null, onDesc = null;
-            if (over != "")
+            if (over != String.Empty)
             {
                 overDesc = new SpriteDescriptor()
                 {
                     ResourceName = over
                 };
             }
-            if (on != "")
+            if (on != String.Empty)
             {
                 onDesc = new SpriteDescriptor()
                 {
@@ -967,8 +1005,15 @@ namespace Yuri.PlatformCore
         /// <param name="cut">纹理切割矩</param>
         private void Background(int id, string filename, double x, double y, double opacity, double xscale, double yscale, double ro, SpriteAnchorType anchor, Int32Rect cut)
         {
-            Director.ScrMana.AddBackground(id, filename, GlobalDataContainer.GAME_WINDOW_WIDTH / 2.0, GlobalDataContainer.GAME_WINDOW_HEIGHT / 2.0,
+            if (ViewManager.Is3DStage)
+            {
+                Director.ScrMana.AddBackground3D(filename, -8);
+            }
+            else
+            {
+                Director.ScrMana.AddBackground2D(id, filename, GlobalConfigContext.GAME_WINDOW_WIDTH / 2.0, GlobalConfigContext.GAME_WINDOW_HEIGHT / 2.0,
                 id, ro, opacity, xscale, yscale, anchor, cut);
+            }
             this.viewMana.Draw(id, ResourceType.Background);
         }
 
@@ -992,6 +1037,17 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
+        /// 演绎函数：显示通知
+        /// </summary>
+        /// <param name="name">通知大标题</param>
+        /// <param name="detail">通知详情</param>
+        /// <param name="iconFilename">通知的图标资源名</param>
+        public void Notify(string name, string detail, string iconFilename)
+        {
+            NotificationManager.Notify(name, detail, iconFilename);
+        }
+
+        /// <summary>
         /// 演绎函数：移动图片
         /// </summary>
         /// <param name="id">图片ID</param>
@@ -1006,44 +1062,44 @@ namespace Yuri.PlatformCore
             SpriteDescriptor descriptor = Director.ScrMana.GetSpriteDescriptor(id, rType);
             if (actionSprite == null)
             {
-                CommonUtils.ConsoleLine(String.Format("Ignored move (sprite is null): {0}, {1}", rType.ToString(), id),
+                CommonUtils.ConsoleLine(String.Format("Ignored move (target sprite is null): {0}, {1}", rType.ToString(), id),
                     "UpdateRender", OutputStyle.Warning);
                 return;
             }
             switch (property)
             {
                 case "x":
+                    descriptor.ToX = toValue;
                     SpriteAnimation.XMoveToAnimation(actionSprite, duration, toValue, acc);
-                    descriptor.X = toValue;
                     break;
                 case "y":
+                    descriptor.ToY = toValue;
                     SpriteAnimation.YMoveToAnimation(actionSprite, duration, toValue, acc);
-                    descriptor.Y = toValue;
                     break;
                 case "o":
                 case "opacity":
+                    descriptor.ToOpacity = toValue;
                     SpriteAnimation.OpacityToAnimation(actionSprite, duration, toValue, acc);
-                    descriptor.Opacity = toValue;
                     break;
                 case "a":
                 case "angle":
+                    descriptor.ToAngle = toValue;
                     SpriteAnimation.RotateToAnimation(actionSprite, duration, toValue, acc);
-                    descriptor.Angle = toValue;
                     break;
                 case "s":
                 case "scale":
+                    descriptor.ToScaleX = descriptor.ToScaleY = toValue;
                     SpriteAnimation.ScaleToAnimation(actionSprite, duration, toValue, toValue, acc, acc);
-                    descriptor.ScaleX = descriptor.ScaleY = toValue;
                     break;
                 case "sx":
                 case "scalex":
+                    descriptor.ToScaleX = toValue;
                     SpriteAnimation.ScaleToAnimation(actionSprite, duration, toValue, descriptor.ScaleY, acc, 0);
-                    descriptor.ScaleX = toValue;
                     break;
                 case "sy":
                 case "scaley":
+                    descriptor.ToScaleY = toValue;
                     SpriteAnimation.ScaleToAnimation(actionSprite, duration, descriptor.ScaleX, toValue, 0, acc);
-                    descriptor.ScaleY = toValue;
                     break;
                 default:
                     CommonUtils.ConsoleLine(String.Format("Move instruction without valid parameters: {0}", property),
@@ -1074,43 +1130,59 @@ namespace Yuri.PlatformCore
         /// <param name="filename">资源名称</param>
         /// <param name="locationStr">立绘位置字符串</param>
         /// <param name="opacity">不透明度</param>
-        /// <param name="xscale">X缩放比</param>
-        /// <param name="yscale">Y缩放比</param>
+        /// <param name="xscale">[废弃的] X缩放比</param>
+        /// <param name="yscale">[废弃的] Y缩放比</param>
         /// <param name="ro">角度</param>
         /// <param name="anchor">锚点</param>
         /// <param name="cut">纹理切割矩</param>
         private void Cstand(int id, string filename, string locationStr, double opacity, double xscale, double yscale, double ro, SpriteAnchorType anchor, Int32Rect cut)
         {
-            CharacterStandType cst;
-            switch (locationStr)
+            int tloc;
+            if (ViewManager.Is3DStage)
             {
-                case "l":
-                case "left":
-                    cst = CharacterStandType.Left;
-                    if (id == -1) { id = 0; }
-                    break;
-                case "ml":
-                case "midleft":
-                    cst = CharacterStandType.MidLeft;
-                    if (id == -1) { id = 1; }
-                    break;
-                case "mr":
-                case "midright":
-                    cst = CharacterStandType.MidRight;
-                    if (id == -1) { id = 3; }
-                    break;
-                case "r":
-                case "right":
-                    cst = CharacterStandType.Right;
-                    if (id == -1) { id = 4; }
-                    break;
-                default:
-                    cst = CharacterStandType.Mid;
-                    if (id == -1) { id = 2; }
-                    break;
+                if (Int32.TryParse(locationStr, out tloc))
+                {
+                    Director.ScrMana.AddCharacterStand3D(tloc, filename, 0);
+                }
+                else
+                {
+                    Director.ScrMana.AddCharacterStand3D(tloc = 0, filename, 0);
+                }
             }
-            Director.ScrMana.AddCharacterStand(id, filename, cst, id, ro, opacity, anchor, cut);
-            this.viewMana.Draw(id, ResourceType.Stand);
+            else
+            {
+                CharacterStandType cst;
+                switch (locationStr)
+                {
+                    case "l":
+                    case "left":
+                        cst = CharacterStandType.Left;
+                        if (id == -1) { id = 0; }
+                        break;
+                    case "ml":
+                    case "midleft":
+                        cst = CharacterStandType.MidLeft;
+                        if (id == -1) { id = 1; }
+                        break;
+                    case "mr":
+                    case "midright":
+                        cst = CharacterStandType.MidRight;
+                        if (id == -1) { id = 3; }
+                        break;
+                    case "r":
+                    case "right":
+                        cst = CharacterStandType.Right;
+                        if (id == -1) { id = 4; }
+                        break;
+                    default:
+                        cst = CharacterStandType.Mid;
+                        if (id == -1) { id = 2; }
+                        break;
+                }
+                Director.ScrMana.AddCharacterStand2D(id, filename, cst, id, ro, opacity, anchor, cut);
+                tloc = id;
+            }
+            this.viewMana.Draw(tloc, ResourceType.Stand);
         }
 
         /// <summary>
@@ -1121,29 +1193,35 @@ namespace Yuri.PlatformCore
         /// <param name="x">X坐标</param>
         /// <param name="y">Y坐标</param>
         /// <param name="opacity">不透明度</param>
-        /// <param name="xscale">X缩放比</param>
-        /// <param name="yscale">Y缩放比</param>
-        /// <param name="ro">角度</param>
+        /// <param name="loc">横向相对位置分块号</param>
         /// <param name="anchor">锚点</param>
         /// <param name="cut">纹理切割矩</param>
-        private void Cstand(int id, string filename, double x, double y, double opacity, double xscale, double yscale, double ro, SpriteAnchorType anchor, Int32Rect cut)
+        private void Cstand(int id, string filename, double x, double y, double opacity, int loc, SpriteAnchorType anchor, Int32Rect cut)
         {
-            Director.ScrMana.AddCharacterStand(id, filename, x, y, id, ro, opacity, anchor, cut);
-            this.viewMana.Draw(id, ResourceType.Stand);
+            int passinId;
+            if (ViewManager.Is3DStage)
+            {
+                Director.ScrMana.AddCharacterStand3D(passinId = loc, filename, 0);
+            }
+            else
+            {
+                Director.ScrMana.AddCharacterStand2D(passinId = id, filename, x, y, id, 0, opacity, anchor, cut);
+            }
+            this.viewMana.Draw(passinId, ResourceType.Stand);
         }
 
         /// <summary>
         /// 演绎函数：移除立绘
         /// </summary>
-        private void Deletecstand(CharacterStandType cst)
+        private void Deletecstand(int cst)
         {
-            if (cst == CharacterStandType.All)
+            if (cst == -1)
             {
                 this.viewMana.RemoveView(ResourceType.Stand);
             }
             else
             {
-                this.viewMana.RemoveSprite(Convert.ToInt32(cst), ResourceType.Stand);
+                this.viewMana.RemoveSprite(cst, ResourceType.Stand);
             }
         }
 
@@ -1154,8 +1232,8 @@ namespace Yuri.PlatformCore
         /// <param name="volume">音量</param>
         private void Se(string resourceName, double volume)
         {
-            var seKVP = this.resMana.GetSE(resourceName);
-            this.musician.PlaySE(seKVP.Key, seKVP.Value, (float)volume);
+            var ms = this.resMana.GetSE(resourceName);
+            this.musician.PlaySE(ms, (float)volume);
         }
 
         /// <summary>
@@ -1166,17 +1244,17 @@ namespace Yuri.PlatformCore
         public void Bgm(string resourceName, double volume)
         {
             // 空即为停止
-            if (resourceName == null || resourceName == String.Empty)
+            if (String.IsNullOrEmpty(resourceName))
             {
                 Director.RunMana.PlayingBGM = String.Empty;
                 this.musician.StopAndReleaseBGM();
             }
             // 如果当前BGM就是此BGM就只调整音量
-            else if (this.musician.currentBGM != resourceName)
+            else if (this.musician.CurrentBgm != resourceName)
             {
-                var bgmKVP = this.resMana.GetBGM(resourceName);
+                var ms = this.resMana.GetBGM(resourceName);
                 Director.RunMana.PlayingBGM = resourceName;
-                this.musician.PlayBGM(resourceName, bgmKVP.Key, bgmKVP.Value, (float)volume);
+                this.musician.PlayBGM(resourceName, ms, (float)volume);
             }
             else
             {
@@ -1201,7 +1279,7 @@ namespace Yuri.PlatformCore
         private void Vocal(string name, int vid, double volume)
         {
             if (vid == -1) { return; }
-            this.Vocal(String.Format("{0}_{1}{2}", name, vid, GlobalDataContainer.GAME_VOCAL_POSTFIX), (float)volume);
+            this.Vocal(String.Format("{0}_{1}{2}", name, vid, GlobalConfigContext.GAME_VOCAL_POSTFIX), (float)volume);
         }
 
         /// <summary>
@@ -1211,10 +1289,10 @@ namespace Yuri.PlatformCore
         /// <param name="volume">音量</param>
         private void Vocal(string resourceName, double volume)
         {
-            if (resourceName != "")
+            if (resourceName != String.Empty)
             {
-                var vocalKVP = this.resMana.GetVocal(resourceName);
-                this.musician.PlayVocal(vocalKVP.Key, vocalKVP.Value, (float)volume);
+                var ms = this.resMana.GetVocal(resourceName);
+                this.musician.PlayVocal(ms, (float)volume);
             }
         }
 
@@ -1235,10 +1313,10 @@ namespace Yuri.PlatformCore
             // 没有标志回归点就从程序入口重新开始
             if (this.titlePointContainer.Key == null || this.titlePointContainer.Value == null)
             {
-                var mainScene = this.resMana.GetScene(GlobalDataContainer.Script_Main);
+                var mainScene = this.resMana.GetScene(GlobalConfigContext.Script_Main);
                 if (mainScene == null)
                 {
-                    CommonUtils.ConsoleLine(String.Format("No Entry Point Scene: {0}, Program will exit.", GlobalDataContainer.Script_Main),
+                    CommonUtils.ConsoleLine(String.Format("No Entry Point Scene: {0}, Program will exit.", GlobalConfigContext.Script_Main),
                         "Director", OutputStyle.Error);
                     Environment.Exit(0);
                 }
@@ -1248,7 +1326,7 @@ namespace Yuri.PlatformCore
             else
             {
                 Director.RunMana.CallScene(this.titlePointContainer.Key);
-                Director.RunMana.CallStack.ESP.IP = this.titlePointContainer.Value;
+                Director.RunMana.CallStack.ESP.MircoStep(this.titlePointContainer.Value);
             }
         }
 
@@ -1264,7 +1342,8 @@ namespace Yuri.PlatformCore
                 this.DrawDialogRunQueue(this.pendingDialogQueue.Count, false);
             }
             var sp = Director.RunMana.PreviewSave();
-            IOUtils.Serialization(Director.RunMana, GlobalDataContainer.GAME_SAVE_DIR + "\\" + saveFileName + GlobalDataContainer.GAME_SAVE_POSTFIX);
+            PersistenceContext.SaveToSteadyMemory();
+            IOUtils.Serialization(Director.RunMana, GlobalConfigContext.GAME_SAVE_DIR + "\\" + saveFileName + GlobalConfigContext.GAME_SAVE_POSTFIX);
             Director.RunMana.FinishedSave(sp);
         }
 
@@ -1275,7 +1354,7 @@ namespace Yuri.PlatformCore
         public void Load(string loadFileName)
         {
             SpriteAnimation.SkipAllAnimation();
-            var rm = (RuntimeManager)IOUtils.Unserialization(GlobalDataContainer.GAME_SAVE_DIR + "\\" + loadFileName + GlobalDataContainer.GAME_SAVE_POSTFIX);
+            var rm = (RuntimeManager)IOUtils.Unserialization(GlobalConfigContext.GAME_SAVE_DIR + "\\" + loadFileName + GlobalConfigContext.GAME_SAVE_POSTFIX);
             Director.ResumeFromSaveData(rm);
         }
 
@@ -1300,17 +1379,92 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
+        /// 演绎函数：执行场景镜头动画
+        /// </summary>
+        /// <param name="name">动画名</param>
+        /// <param name="r">目标分区行号</param>
+        /// <param name="c">目标分区列号</param>
+        /// <param name="ro">缩放比，1.0代表原始尺寸</param>
+        private void Scamera(string name, int r, int c, double ro)
+        {
+            if (GlobalConfigContext.GAME_SCAMERA_ENABLE == false)
+            {
+                return;
+            }
+            if (r < 0 || r > GlobalConfigContext.GAME_SCAMERA_SCR_ROWCOUNT)
+            {
+                r = GlobalConfigContext.GAME_SCAMERA_SCR_ROWCOUNT / 2;
+            }
+            if (c < 0 || c > GlobalConfigContext.GAME_SCAMERA_SCR_COLCOUNT)
+            {
+                c = 0;
+            }
+            var sname = name.Trim().ToLower();
+            if (ViewManager.Is3DStage)
+            {
+                switch (sname)
+                {
+                    case "translate":
+                        SCamera3D.Translate(r, c);
+                        break;
+                    case "focus":
+                        SCamera3D.FocusOn(r, c, ro);
+                        break;
+                    case "reset":
+                        SCamera3D.ResetFocus(false);
+                        break;
+                    case "blackframe":
+                        SCamera3D.LeaveSceneToBlackFrame();
+                        break;
+                    case "outblackframe":
+                        SCamera3D.ResumeBlackFrame();
+                        break;
+                    case "enterscene":
+                        SCamera3D.PreviewEnterScene();
+                        SCamera3D.PostEnterScene();
+                        break;
+                }
+            }
+            else
+            {
+                ro = Math.Max(0.5, Math.Min(2.5, ro));
+                switch (sname)
+                {
+                    case "translate":
+                        SCamera2D.Translate(r, c);
+                        break;
+                    case "focus":
+                        SCamera2D.FocusOn(r, c, ro);
+                        break;
+                    case "reset":
+                        SCamera2D.ResetFocus(false);
+                        break;
+                    case "blackframe":
+                        SCamera2D.LeaveSceneToBlackFrame();
+                        break;
+                    case "outblackframe":
+                        SCamera2D.ResumeBlackFrame();
+                        break;
+                    case "enterscene":
+                        SCamera2D.PreviewEnterScene();
+                        SCamera2D.PostEnterScene();
+                        break;
+                }
+            }
+        }
+        
+        /// <summary>
         /// 选择项
         /// </summary>
         /// <param name="linkStr">选择项跳转链</param>
         private void Branch(string linkStr)
         {
             // 处理跳转链
-            List<KeyValuePair<string, string>> tagList = new List<KeyValuePair<string, string>>();
-            string[] linkItems = linkStr.Split(';');
+            var tagList = new List<KeyValuePair<string, string>>();
+            var linkItems = linkStr.Split(';');
             foreach (var linkItem in linkItems)
             {
-                string[] linkPair = linkItem.Split(',');
+                var linkPair = linkItem.Split(',');
                 if (linkPair.Length == 2)
                 {
                     tagList.Add(new KeyValuePair<string,string>(linkPair[0].Trim(), linkPair[1].Trim()));
@@ -1326,27 +1480,29 @@ namespace Yuri.PlatformCore
                 return;
             }
             // 处理按钮显示参数
-            double GroupX = GlobalDataContainer.GAME_WINDOW_WIDTH / 2.0 - GlobalDataContainer.GAME_BRANCH_WIDTH / 2.0;
-            double BeginY = GlobalDataContainer.GAME_WINDOW_ACTUALHEIGHT / 2.0 - (GlobalDataContainer.GAME_BRANCH_HEIGHT * 2.0) * (tagList.Count / 2.0);
-            double DeltaY = GlobalDataContainer.GAME_BRANCH_HEIGHT;
+            double GroupX = GlobalConfigContext.GAME_WINDOW_WIDTH / 2.0 - GlobalConfigContext.GAME_BRANCH_WIDTH / 2.0;
+            double BeginY = GlobalConfigContext.GAME_WINDOW_ACTUALHEIGHT / 2.0 - (GlobalConfigContext.GAME_BRANCH_HEIGHT * 2.0) * (tagList.Count / 2.0);
+            double DeltaY = GlobalConfigContext.GAME_BRANCH_HEIGHT;
             // 描绘按钮
             for (int i = 0; i < tagList.Count; i++)
             {
                 SpriteDescriptor normalDesc = new SpriteDescriptor()
                 {
-                    ResourceName = GlobalDataContainer.GAME_BRANCH_BACKGROUNDNORMAL
+                    ResourceName = GlobalConfigContext.GAME_BRANCH_BACKGROUNDNORMAL
                 },
                 overDesc = new SpriteDescriptor()
                 {
-                    ResourceName = GlobalDataContainer.GAME_BRANCH_BACKGROUNDSELECT
+                    ResourceName = GlobalConfigContext.GAME_BRANCH_BACKGROUNDSELECT
                 },
                 onDesc = new SpriteDescriptor()
                 {
-                    ResourceName = GlobalDataContainer.GAME_BRANCH_BACKGROUNDSELECT
+                    ResourceName = GlobalConfigContext.GAME_BRANCH_BACKGROUNDSELECT
                 };
                 Director.ScrMana.AddBranchButton(i, GroupX, BeginY + DeltaY * 2 * i, tagList[i].Value, tagList[i].Key, normalDesc, overDesc, onDesc);
                 this.viewMana.Draw(i, ResourceType.BranchButton);
             }
+            // 更改状态
+            this.isShowingDialog = false;
             // 追加等待
             Director.RunMana.UserWait("UpdateRender", String.Format("BranchWaitFor:{0}", linkStr));
         }
@@ -1391,7 +1547,7 @@ namespace Yuri.PlatformCore
         /// <param name="valueStr">值字符串</param>
         private void MsgLayerOpt(int msglayId, string property, string valueStr)
         {
-            if (msglayId >= 0 && msglayId < GlobalDataContainer.GAME_MESSAGELAYER_COUNT)
+            if (msglayId >= 0 && msglayId < GlobalConfigContext.GAME_MESSAGELAYER_COUNT)
             {
                 MessageLayer ml = this.viewMana.GetMessageLayer(msglayId);
                 MessageLayerDescriptor mld = Director.ScrMana.GetMsgLayerDescriptor(msglayId);
@@ -1494,6 +1650,5 @@ namespace Yuri.PlatformCore
             this.Drawtext(id, str);
         }
         #endregion
-
     }
 }

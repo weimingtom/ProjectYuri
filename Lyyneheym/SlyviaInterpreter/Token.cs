@@ -1,4 +1,6 @@
-﻿namespace Yuri.YuriInterpreter
+﻿using System;
+
+namespace Yuri.YuriInterpreter
 {
     /// <summary>
     /// 单词类：负责装填词法分析阶段的结果的最小单元
@@ -33,7 +35,7 @@
         /// <summary>
         /// 原字串
         /// </summary>
-        public string OriginalCodeStr = "";
+        public string OriginalCodeStr = String.Empty;
 
         /// <summary>
         /// 错误位
@@ -233,6 +235,12 @@
         Token_o_draw,
         // 移除按钮
         Token_o_deletebutton,
+        // 场景镜头
+        Token_o_scamera,
+        // 通知
+        Token_o_notify,
+        // 发送系统消息
+        Token_o_yurimsg,
         // 参数：类型
         Token_p_type,
         // 参数：函数签名

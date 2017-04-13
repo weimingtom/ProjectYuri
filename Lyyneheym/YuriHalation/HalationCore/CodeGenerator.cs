@@ -156,7 +156,7 @@ namespace Yuri.YuriHalation.HalationCore
                         break;
                     case ActionPackageType.act_if:
                         string ifCode = "@if cond=";
-                        if (act.argsDict["expr"].valueExp == "")
+                        if (act.argsDict["expr"].valueExp == String.Empty)
                         {
                             string[] ifLeftItems = act.argsDict["op1"].valueExp.ToString().Split('#');
                             string[] ifRightItems = act.argsDict["op2"].valueExp.Split('#');
@@ -219,24 +219,7 @@ namespace Yuri.YuriHalation.HalationCore
                         aCode += String.Format("name=\"{0}\" ", act.argsDict["name"].valueExp);
                         aCode += String.Format("face=\"{0}\" ", act.argsDict["face"].valueExp);
                         aCode += String.Format("vid=\"{0}\" ", act.argsDict["vid"].valueExp);
-                        switch (act.argsDict["loc"].valueExp)
-                        {
-                            case "左":
-                                aCode += "loc=\"left\"";
-                                break;
-                            case "左中":
-                                aCode += "loc=\"midleft\"";
-                                break;
-                            case "右中":
-                                aCode += "loc=\"midright\"";
-                                break;
-                            case "右":
-                                aCode += "loc=\"right\"";
-                                break;
-                            default:
-                                aCode += "loc=\"mid\"";
-                                break;
-                        }
+                        aCode += String.Format("loc=\"{0}\"", act.argsDict["loc"].valueExp);
                         codeBuilder.AppendLine(aCode);
                         break;
                     case ActionPackageType.act_dialog:
@@ -257,7 +240,7 @@ namespace Yuri.YuriHalation.HalationCore
                         string[] callsignItems = act.argsDict["sign"].valueExp.Split(new char[] {','}, StringSplitOptions.RemoveEmptyEntries);
                         if (callsignItems.Length > 0)
                         {
-                            string signBuilder = "";
+                            string signBuilder = String.Empty;
                             foreach (var cskvp in callsignItems)
                             {
                                 string[] cskvpItems = cskvp.Split(':');
@@ -269,7 +252,7 @@ namespace Yuri.YuriHalation.HalationCore
                         codeBuilder.AppendLine(callCode);
                         break;
                     default:
-                        string singleCode = String.Format("@{0} ", act.nodeType.ToString().Replace("act_", ""));
+                        string singleCode = String.Format("@{0} ", act.nodeType.ToString().Replace("act_", String.Empty));
                         foreach (var arkv in act.argsDict)
                         {
                             switch (arkv.Key)

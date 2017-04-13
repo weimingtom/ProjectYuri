@@ -40,13 +40,42 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Bass.Net">
-      <HintPath>.\Bass.Net.dll</HintPath>
+    <Reference Include="IronPython, Version=2.7.7.0, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\packages\IronPython.2.7.7\lib\Net40\IronPython.dll</HintPath>
+    </Reference>
+    <Reference Include="IronPython.Modules, Version=2.7.7.0, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\packages\IronPython.2.7.7\lib\Net40\IronPython.Modules.dll</HintPath>
+    </Reference>
+    <Reference Include="IronPython.SQLite, Version=2.7.7.0, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\packages\IronPython.2.7.7\lib\Net40\IronPython.SQLite.dll</HintPath>
+    </Reference>
+    <Reference Include="IronPython.Wpf, Version=2.7.7.0, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\packages\IronPython.2.7.7\lib\Net40\IronPython.Wpf.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Dynamic, Version=1.1.2.22, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\packages\DynamicLanguageRuntime.1.1.2\lib\Net40\Microsoft.Dynamic.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Scripting, Version=1.1.2.22, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\packages\DynamicLanguageRuntime.1.1.2\lib\Net40\Microsoft.Scripting.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Scripting.AspNet, Version=1.1.1.21, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\packages\DynamicLanguageRuntime.1.1.2\lib\Net40\Microsoft.Scripting.AspNet.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Scripting.Metadata, Version=1.1.2.22, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\packages\DynamicLanguageRuntime.1.1.2\lib\Net40\Microsoft.Scripting.Metadata.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio, Version=1.8.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>.\NAudio.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Interactivity, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\MahApps.Metro.1.4.3\lib\net40\System.Windows.Interactivity.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
@@ -64,15 +93,35 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Director.cs" />
-    <Compile Include="ILPackage\ConfigParser.cs" />
-    <Compile Include="PlatformCore\CloneableDescriptor.cs" />
-    <Compile Include="PlatformCore\ResourceCachePool.cs" />
+    <Compile Include="PlatformCore\Director.cs" />
+    <Compile Include="PlatformCore\Graphic3D\ParticleDescriptor3D.cs" />
+    <Compile Include="PlatformCore\Graphic3D\ParticleEmitter3D.cs" />
+    <Compile Include="PlatformCore\Graphic3D\ParticleSystem3D.cs" />
+    <Compile Include="PlatformCore\VM\ConfigParser.cs" />
+    <Compile Include="Utils\EncryptUtils.cs" />
+    <Compile Include="PageView\SLPage.xaml.cs">
+      <DependentUpon>SLPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="PageView\Stage3D.xaml.cs">
+      <DependentUpon>Stage3D.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="PlatformCore\Audio\NAudioPlayer.cs" />
+    <Compile Include="PlatformCore\NotificationManager.cs" />
+    <Compile Include="PlatformCore\Graphic\CloneableDescriptor.cs" />
+    <Compile Include="PlatformCore\VM\PersistenceContext.cs" />
+    <Compile Include="PlatformCore\Evaluator\PolishEvaluator.cs" />
+    <Compile Include="PlatformCore\VM\ResourceCachePool.cs" />
     <Compile Include="PlatformCore\RollbackManager.cs" />
-    <Compile Include="PlatformCore\SCamera.cs" />
-    <Compile Include="PlatformCore\StepStatePackage.cs" />
-    <Compile Include="PlatformCore\ViewportDescriptor.cs" />
-    <Compile Include="PlatformCore\YuriViewport.cs" />
+    <Compile Include="PlatformCore\Graphic\SCamera2D.cs" />
+    <Compile Include="PlatformCore\VM\RollbackableSnapshot.cs" />
+    <Compile Include="PlatformCore\Graphic3D\SCamera3D.cs" />
+    <Compile Include="PlatformCore\Graphic\ViewPageManager.cs" />
+    <Compile Include="PlatformCore\Graphic\Viewport2DDescriptor.cs" />
+    <Compile Include="PlatformCore\YuririWorld.cs" />
+    <Compile Include="PlatformCore\Graphic\Viewport2D.cs" />
+    <Compile Include="PageView\Stage2D.xaml.cs">
+      <DependentUpon>Stage2D.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Utils\CommonUtils.cs" />
     <Compile Include="Utils\IOUtils.cs" />
     <Compile Include="Utils\PackageUtils.cs" />
@@ -84,37 +133,46 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="ILPackage\ILConvertor.cs" />
-    <Compile Include="ILPackage\SceneAction.cs" />
+    <Compile Include="PlatformCore\VM\ILConvertor.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="PageView\SLPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="PageView\Stage3D.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="PageView\Stage2D.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="PlatformCore\BranchButton.cs" />
-    <Compile Include="PlatformCore\BranchButtonDescriptor.cs" />
-    <Compile Include="PlatformCore\GlobalDataContainer.cs" />
-    <Compile Include="PlatformCore\Interrupt.cs" />
-    <Compile Include="PlatformCore\MessageLayer.cs" />
-    <Compile Include="PlatformCore\MessageLayerDescriptor.cs" />
-    <Compile Include="PlatformCore\Musician.cs" />
-    <Compile Include="PlatformCore\PolishItem.cs" />
+    <Compile Include="PlatformCore\Graphic\BranchButton.cs" />
+    <Compile Include="PlatformCore\Graphic\BranchButtonDescriptor.cs" />
+    <Compile Include="PlatformCore\GlobalDataContext.cs" />
+    <Compile Include="PlatformCore\VM\Interrupt.cs" />
+    <Compile Include="PlatformCore\Graphic\MessageLayer.cs" />
+    <Compile Include="PlatformCore\Graphic\MessageLayerDescriptor.cs" />
+    <Compile Include="PlatformCore\Audio\Musician.cs" />
+    <Compile Include="PlatformCore\Evaluator\PolishItem.cs" />
     <Compile Include="PlatformCore\ResourceManager.cs" />
     <Compile Include="PlatformCore\RuntimeManager.cs" />
-    <Compile Include="PlatformCore\Scene.cs" />
-    <Compile Include="PlatformCore\SceneFunction.cs" />
-    <Compile Include="PlatformCore\ScreenManager.cs" />
-    <Compile Include="PlatformCore\SpriteAnimation.cs" />
-    <Compile Include="PlatformCore\SpriteButton.cs" />
-    <Compile Include="PlatformCore\SpriteButtonDescriptor.cs" />
-    <Compile Include="PlatformCore\SpriteDescriptor.cs" />
-    <Compile Include="PlatformCore\StackMachine.cs" />
-    <Compile Include="PlatformCore\StackMachineFrame.cs" />
-    <Compile Include="PlatformCore\SymbolTable.cs" />
+    <Compile Include="PlatformCore\Graphic\ScreenManager.cs" />
+    <Compile Include="PlatformCore\Graphic\SpriteAnimation.cs" />
+    <Compile Include="PlatformCore\Graphic\SpriteButton.cs" />
+    <Compile Include="PlatformCore\Graphic\SpriteButtonDescriptor.cs" />
+    <Compile Include="PlatformCore\Graphic\SpriteDescriptor.cs" />
+    <Compile Include="PlatformCore\VM\StackMachine.cs" />
+    <Compile Include="PlatformCore\VM\StackMachineFrame.cs" />
+    <Compile Include="PlatformCore\VM\SymbolTable.cs" />
     <Compile Include="PlatformCore\UpdateRender.cs" />
-    <Compile Include="PlatformCore\ViewManager.cs" />
-    <Compile Include="PlatformCore\YuriSprite.cs" />
+    <Compile Include="PlatformCore\Graphic\ViewManager.cs" />
+    <Compile Include="PlatformCore\Graphic\YuriSprite.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -127,8 +185,8 @@
       <Generator>PublicResXFileCodeGenerator</Generator>
     </Compile>
     <None Include="app.config" />
-    <None Include="PlatformClassDiagram.cd" />
-    <Compile Include="PlatformCore\ForkableState.cs" />
+    <Compile Include="PlatformCore\VM\ForkableState.cs" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -136,14 +194,21 @@
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Properties\Resources.resx" />
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SlyviaInterpreter\YuriInterpreter.csproj">
       <Project>{6194a2aa-1c9d-40cd-8c8f-ea66f679cc0f}</Project>
       <Name>YuriInterpreter</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Yuriri\Yuriri.csproj">
+      <Project>{2ce410d4-7eb7-473e-acc8-6ef39038188e}</Project>
+      <Name>Yuriri</Name>
+    </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

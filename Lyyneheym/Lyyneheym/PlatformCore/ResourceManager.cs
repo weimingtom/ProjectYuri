@@ -3,8 +3,10 @@ using System.IO;
 using System.Windows;
 using System.Threading;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using Yuri.PlatformCore.Graphic;
+using Yuri.PlatformCore.VM;
 using Yuri.Utils;
+using Yuri.Yuriri;
 
 namespace Yuri.PlatformCore
 {
@@ -22,11 +24,9 @@ namespace Yuri.PlatformCore
         /// <returns>该资源的精灵</returns>
         public YuriSprite GetBackground(string sourceName, Int32Rect cutRect)
         {
-            if (cutRect.X == -1)
-            {
-                return this.GetGraphicSprite(sourceName, ResourceType.Background, null);
-            }
-            return this.GetGraphicSprite(sourceName, ResourceType.Background, cutRect);
+            return cutRect.X == -1
+                ? this.GetGraphicSprite(sourceName, ResourceType.Background, null)
+                : this.GetGraphicSprite(sourceName, ResourceType.Background, cutRect);
         }
 
         /// <summary>
@@ -37,11 +37,9 @@ namespace Yuri.PlatformCore
         /// <returns>该资源的精灵</returns>
         public YuriSprite GetCharacterStand(string sourceName, Int32Rect cutRect)
         {
-            if (cutRect.X == -1)
-            {
-                return this.GetGraphicSprite(sourceName, ResourceType.Stand, null);
-            }
-            return this.GetGraphicSprite(sourceName, ResourceType.Stand, cutRect);
+            return cutRect.X == -1 
+                ? this.GetGraphicSprite(sourceName, ResourceType.Stand, null)
+                : this.GetGraphicSprite(sourceName, ResourceType.Stand, cutRect);
         }
 
         /// <summary>
@@ -52,51 +50,49 @@ namespace Yuri.PlatformCore
         /// <returns>该资源的精灵</returns>
         public YuriSprite GetPicture(string sourceName, Int32Rect cutRect)
         {
-            if (cutRect.X == -1)
-            {
-                return this.GetGraphicSprite(sourceName, ResourceType.Pictures, null);
-            }
-            return this.GetGraphicSprite(sourceName, ResourceType.Pictures, cutRect);
+            return cutRect.X == -1
+                ? this.GetGraphicSprite(sourceName, ResourceType.Pictures, null)
+                : this.GetGraphicSprite(sourceName, ResourceType.Pictures, cutRect);
         }
 
         /// <summary>
         /// 获得一个指定BGM音频资源的内存数组
         /// </summary>
         /// <param name="sourceName">资源名称</param>
-        /// <returns>一个键值对：该音频的内存托管句柄 - 内存长度</returns>
-        public KeyValuePair<GCHandle?, long> GetBGM(string sourceName)
+        /// <returns>该音频的托管内存流</returns>
+        public MemoryStream GetBGM(string sourceName)
         {
-            return this.GetMusicGCHandleLengthKVP(sourceName, ResourceType.BGM);
+            return this.GetMusicMemoryStream(sourceName, ResourceType.BGM);
         }
 
         /// <summary>
         /// 获得一个指定BGS音频资源的内存数组
         /// </summary>
         /// <param name="sourceName">资源名称</param>
-        /// <returns>一个键值对：该音频的内存托管句柄 - 内存长度</returns>
-        public KeyValuePair<GCHandle?, long> GetBGS(string sourceName)
+        /// <returns>该音频的托管内存流</returns>
+        public MemoryStream GetBGS(string sourceName)
         {
-            return this.GetMusicGCHandleLengthKVP(sourceName, ResourceType.BGS);
+            return this.GetMusicMemoryStream(sourceName, ResourceType.BGS);
         }
 
         /// <summary>
         /// 获得一个指定SE音频资源的内存数组
         /// </summary>
         /// <param name="sourceName">资源名称</param>
-        /// <returns>一个键值对：该音频的内存托管句柄 - 内存长度</returns>
-        public KeyValuePair<GCHandle?, long> GetSE(string sourceName)
+        /// <returns>该音频的托管内存流</returns>
+        public MemoryStream GetSE(string sourceName)
         {
-            return this.GetMusicGCHandleLengthKVP(sourceName, ResourceType.SE);
+            return this.GetMusicMemoryStream(sourceName, ResourceType.SE);
         }
 
         /// <summary>
         /// 获得一个指定Vocal音频资源的内存数组
         /// </summary>
         /// <param name="sourceName">资源名称</param>
-        /// <returns>一个键值对：该音频的内存托管句柄 - 内存长度</returns>
-        public KeyValuePair<GCHandle?, long> GetVocal(string sourceName)
+        /// <returns>该音频的托管内存流</returns>
+        public MemoryStream GetVocal(string sourceName)
         {
-            return this.GetMusicGCHandleLengthKVP(sourceName, ResourceType.VOCAL);
+            return this.GetMusicMemoryStream(sourceName, ResourceType.VOCAL);
         }
 
         /// <summary>
@@ -106,11 +102,7 @@ namespace Yuri.PlatformCore
         /// <returns>场景实例</returns>
         public Scene GetScene(string sceneName)
         {
-            if (this.sceneTable.ContainsKey(sceneName))
-            {
-                return this.sceneTable[sceneName];
-            }
-            return null;
+            return this.sceneTable.ContainsKey(sceneName) ? this.sceneTable[sceneName] : null;
         }
 
         /// <summary>
@@ -136,23 +128,23 @@ namespace Yuri.PlatformCore
         /// <returns>该资源的精灵</returns>
         private YuriSprite GetGraphicSprite(string sourceName, ResourceType rtype, Int32Rect? cutRect)
         {
-            if (sourceName == "") { return null; }
+            if (sourceName == String.Empty) { return null; }
             YuriSprite sprite = new YuriSprite();
-            string DevURI = null, PackURI = null;
+            string DevURI, PackURI;
             // 处理路径
             switch (rtype)
             {
                 case ResourceType.Background:
-                    DevURI = GlobalDataContainer.DevURI_PA_BACKGROUND;
-                    PackURI = GlobalDataContainer.PackURI_PA_BACKGROUND;
+                    DevURI = GlobalConfigContext.DevURI_PA_BACKGROUND;
+                    PackURI = GlobalConfigContext.PackURI_PA_BACKGROUND;
                     break;
                 case ResourceType.Stand:
-                    DevURI = GlobalDataContainer.DevURI_PA_CHARASTAND;
-                    PackURI = GlobalDataContainer.PackURI_PA_CHARASTAND;
+                    DevURI = GlobalConfigContext.DevURI_PA_CHARASTAND;
+                    PackURI = GlobalConfigContext.PackURI_PA_CHARASTAND;
                     break;
                 case ResourceType.Pictures:
-                    DevURI = GlobalDataContainer.DevURI_PA_PICTURES;
-                    PackURI = GlobalDataContainer.PackURI_PA_PICTURES;
+                    DevURI = GlobalConfigContext.DevURI_PA_PICTURES;
+                    PackURI = GlobalConfigContext.PackURI_PA_PICTURES;
                     break;
                 default:
                     return null;
@@ -162,13 +154,12 @@ namespace Yuri.PlatformCore
                 this.resourceTable[DevURI].ContainsKey(sourceName))
             {
                 // 检查缓冲
-                byte[] ob = ResourceCachePool.Refer(rtype.ToString() + "->" + sourceName);
+                var ob = ResourceCachePool.Refer(rtype.ToString() + "->" + sourceName, ResourceCacheType.Eden);
                 if (ob == null)
                 {
-                    KeyValuePair<long, long> sourceLocation = this.resourceTable[DevURI][sourceName];
-                    ob = PackageUtils.GetObjectBytes(IOUtils.ParseURItoURL(PackURI + GlobalDataContainer.PackPostfix),
-                        sourceName, sourceLocation.Key, sourceLocation.Value);
-                    ResourceCachePool.Register(rtype.ToString() + "->" + sourceName, ob);
+                    var sourceSlot = this.resourceTable[DevURI][sourceName];
+                    ob = PackageUtils.GetObjectBytes(sourceSlot.BindingFile, sourceName, sourceSlot.Position, sourceSlot.Length);
+                    ResourceCachePool.Register(rtype.ToString() + "->" + sourceName, ob, ResourceCacheType.Eden);
                 }
                 MemoryStream ms = new MemoryStream(ob);
                 sprite.Init(sourceName, rtype, ms, cutRect);
@@ -177,20 +168,21 @@ namespace Yuri.PlatformCore
             else
             {
                 // 检查缓冲
-                byte[] ob = ResourceCachePool.Refer(rtype.ToString() + "->" + sourceName);
+                byte[] ob = ResourceCachePool.Refer(rtype.ToString() + "->" + sourceName, ResourceCacheType.Eden);
                 if (ob == null)
                 {
-                    string furi = IOUtils.JoinPath(GlobalDataContainer.DevURI_RT_PICTUREASSETS, DevURI, sourceName);
+                    string furi = IOUtils.JoinPath(GlobalConfigContext.DevURI_RT_PICTUREASSETS, DevURI, sourceName);
                     if (File.Exists(IOUtils.ParseURItoURL(furi)))
                     {
                         Uri bg = new Uri(IOUtils.ParseURItoURL(furi), UriKind.RelativeOrAbsolute);
                         ob = IOUtils.GetObjectBytes(bg);
-                        ResourceCachePool.Register(rtype.ToString() + "->" + sourceName, ob);
+                        ResourceCachePool.Register(rtype.ToString() + "->" + sourceName, ob, ResourceCacheType.Eden);
                     }
                     else
                     {
                         MessageBox.Show("[错误] 资源文件不存在：" + sourceName);
                         Director.GetInstance().GetMainRender().Shutdown();
+                        return null;
                     }
                 }
                 MemoryStream ms = new MemoryStream(ob);
@@ -200,33 +192,57 @@ namespace Yuri.PlatformCore
         }
 
         /// <summary>
+        /// 获取存档屏幕截图的精灵
+        /// </summary>
+        /// <param name="sourceName">文件路径</param>
+        /// <returns>精灵实例</returns>
+        public YuriSprite GetSaveSnapshot(string sourceName)
+        {
+            YuriSprite sprite = new YuriSprite();
+            if (File.Exists(IOUtils.ParseURItoURL(sourceName)))
+            {
+                Uri bg = new Uri(IOUtils.ParseURItoURL(sourceName), UriKind.RelativeOrAbsolute);
+                sprite.Init(sourceName, ResourceType.SaveSnapshot, bg);
+            }
+            else
+            {
+                MessageBox.Show("[错误] 资源文件不存在：" + sourceName);
+                Director.GetInstance().GetMainRender().Shutdown();
+            }
+            return sprite;
+        }
+
+        /// <summary>
         /// 从资源文件中获取声音资源并返回句柄
         /// </summary>
         /// <param name="sourceName">资源名称</param>
         /// <param name="rtype">资源类型</param>
-        /// <returns>一个键值对：该音频的内存托管句柄 - 内存长度</returns>
-        private KeyValuePair<GCHandle?, long> GetMusicGCHandleLengthKVP(string sourceName, ResourceType rtype)
+        /// <returns>该音频的托管内存流</returns>
+        private MemoryStream GetMusicMemoryStream(string sourceName, ResourceType rtype)
         {
-            if (sourceName == String.Empty) { return new KeyValuePair<GCHandle?,long>(null, 0); }
-            string DevURI = null, PackURI = null;
+            if (sourceName == String.Empty)
+            {
+                return null;
+            }
+            string DevURI, PackURI;
             // 处理路径
             switch (rtype)
             {
                 case ResourceType.BGM:
-                    DevURI = GlobalDataContainer.DevURI_SO_BGM;
-                    PackURI = GlobalDataContainer.PackURI_SO_BGM;
+                    DevURI = GlobalConfigContext.DevURI_SO_BGM;
+                    PackURI = GlobalConfigContext.PackURI_SO_BGM;
                     break;
                 case ResourceType.BGS:
-                    DevURI = GlobalDataContainer.DevURI_SO_BGS;
-                    PackURI = GlobalDataContainer.PackURI_SO_BGS;
+                    DevURI = GlobalConfigContext.DevURI_SO_BGS;
+                    PackURI = GlobalConfigContext.PackURI_SO_BGS;
                     break;
                 case ResourceType.SE:
-                    DevURI = GlobalDataContainer.DevURI_SO_SE;
-                    PackURI = GlobalDataContainer.PackURI_SO_SE;
+                    DevURI = GlobalConfigContext.DevURI_SO_SE;
+                    PackURI = GlobalConfigContext.PackURI_SO_SE;
                     break;
                 case ResourceType.VOCAL:
-                    DevURI = GlobalDataContainer.DevURI_SO_VOCAL;
-                    PackURI = GlobalDataContainer.PackURI_SO_VOCAL;
+                    DevURI = GlobalConfigContext.DevURI_SO_VOCAL;
+                    PackURI = GlobalConfigContext.PackURI_SO_VOCAL;
                     break;
                 default:
                     throw new Exception("调用了音乐获取方法，但却不是获取音乐资源");
@@ -235,125 +251,25 @@ namespace Yuri.PlatformCore
             if (this.resourceTable.ContainsKey(DevURI) &&
                 this.resourceTable[DevURI].ContainsKey(sourceName))
             {
-                KeyValuePair<long, long> sourceLocation = this.resourceTable[DevURI][sourceName];
-                GCHandle ptr = PackageUtils.GetObjectManagedHandle(IOUtils.ParseURItoURL(PackURI + GlobalDataContainer.PackPostfix),
-                    sourceName, sourceLocation.Key, sourceLocation.Value);
-                return new KeyValuePair<GCHandle?, long>(ptr, sourceLocation.Value);
+                var sourceSlot = this.resourceTable[DevURI][sourceName];
+                var ptr = PackageUtils.GetObjectBytes(sourceSlot.BindingFile, sourceName, sourceSlot.Position, sourceSlot.Length);
+                return new MemoryStream(ptr);
             }
             // 没有封包数据再搜索开发目录
             else
             {
-                string furi = IOUtils.JoinPath(GlobalDataContainer.DevURI_RT_SOUND, DevURI, sourceName);
+                string furi = IOUtils.JoinPath(GlobalConfigContext.DevURI_RT_SOUND, DevURI, sourceName);
                 if (File.Exists(IOUtils.ParseURItoURL(furi)))
                 {
-                    byte[] bytes = File.ReadAllBytes(IOUtils.ParseURItoURL(furi));
-                    return new KeyValuePair<GCHandle?, long>(GCHandle.Alloc(bytes, GCHandleType.Pinned), bytes.Length);
+                    var ptr = File.ReadAllBytes(IOUtils.ParseURItoURL(furi));
+                    return new MemoryStream(ptr);
                 }
                 else
                 {
                     MessageBox.Show("[错误] 资源文件不存在：" + sourceName);
-                    Director.GetInstance().GetMainRender().Shutdown();
-                    throw new FileNotFoundException();
+                    return null;
                 }
             }
-        }
-
-        /// <summary>
-        /// 根据PST向量载入资源到字典
-        /// </summary>
-        /// <param name="threadID">线程ID</param>
-        private void InitDictionaryByPST(object threadID)
-        {
-            int tid = (int)threadID;
-            while (true)
-            {
-                string pstPath = "";
-                lock (this.pendingPst)
-                {
-                    if (this.pendingPst.Count != 0)
-                    {
-                        pstPath = this.pendingPst.Dequeue();
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-                if (pstPath == "")
-                {
-                    continue;
-                }
-                CommonUtils.AsyncConsoleLine(String.Format("Loading PST Resource From \"{0}\" At thread {1}", pstPath, tid), "ResourceManager", this.consoleMutex, OutputStyle.Normal);
-                // 开始处理文件
-                FileStream fs = new FileStream(pstPath, FileMode.Open);
-                StreamReader sr = new StreamReader(fs);
-                // 读取头部信息
-                string header = sr.ReadLine();
-                string[] headerItem = header.Split('@');
-                if (headerItem.Length != GlobalDataContainer.PackHeaderItemNum && headerItem[0] != GlobalDataContainer.PackHeader)
-                {
-                    CommonUtils.AsyncConsoleLine(String.Format("Ignored Pack (Bad Header): {0}", pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
-                    continue;
-                }
-                int fileCount = 0;
-                string resourceType = "";
-                string key = "";
-                string version = "";
-                try
-                {
-                    fileCount = Convert.ToInt32(headerItem[1]);
-                    resourceType = headerItem[2];
-                    string[] keyItem = headerItem[3].Split('?');
-                    if (keyItem.Length != 2)
-                    {
-                        version = "0";
-                    }
-                    key = keyItem[0];
-                    version = keyItem[1];
-                    if (key != GlobalDataContainer.GAME_KEY)
-                    {
-                        CommonUtils.AsyncConsoleLine(String.Format("Ignored Pack (Key Failed): {0}", pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
-                        continue;
-                    }
-                    else if (Convert.ToDouble(version) < Convert.ToDouble(GlobalDataContainer.GAME_VERSION))
-                    {
-                        CommonUtils.AsyncConsoleLine(String.Format("Ignored Pack (Version Is Elder): {0}", pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
-                        continue;
-                    }
-                    // 通过检验的包才载入资源字典
-                    this.AddResouceTable(resourceType);
-                    int lineEncounter = 0;
-                    while (lineEncounter < fileCount)
-                    {
-                        lineEncounter++;
-                        string[] lineitem = sr.ReadLine().Split(':');
-                        if (lineitem[0] == GlobalDataContainer.PackEOF)
-                        {
-                            CommonUtils.AsyncConsoleLine(String.Format("Occured EOF: {0}", pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
-                            break;
-                        }
-                        if (lineitem.Length != 3)
-                        {
-                            CommonUtils.AsyncConsoleLine(String.Format("Igonred line(Bad lineitem): {0}, In file: {1}", lineEncounter, pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
-                            continue;
-                        }
-                        string srcName = lineitem[0];
-                        long srcOffset = Convert.ToInt64(lineitem[1]);
-                        long srcLength = Convert.ToInt64(lineitem[2]);
-                        this.AddResource(resourceType, srcName, srcOffset, srcLength);
-                    }
-                    CommonUtils.AsyncConsoleLine(String.Format("Finish Dictionary Init From \"{0}\" At thread {1}", pstPath, tid), "ResourceManager", this.consoleMutex, OutputStyle.Normal);
-                }
-                catch (Exception ex)
-                {
-                    CommonUtils.AsyncConsoleLine(ex.ToString(), "ResourceManager / CLR", this.consoleMutex, OutputStyle.Error);                    
-                }
-                sr.Close();
-                fs.Close();
-            }
-            // 递增回到等待
-            this.threadFinishCounter++;
-            CommonUtils.AsyncConsoleLine(String.Format("At ResMana thread {0}, Waiting for callback", tid), "ResourceManager", this.consoleMutex, OutputStyle.Important);
         }
 
         /// <summary>
@@ -362,7 +278,7 @@ namespace Yuri.PlatformCore
         /// <returns>资源信息文件的路径队列</returns>
         private Queue<string> SearchPST()
         {
-            Queue<string> resContainer = new Queue<string>();
+            var resContainer = new Queue<string>();
             DirectoryInfo rootDirInfo = new DirectoryInfo(Director.BasePath);
             foreach (FileInfo file in rootDirInfo.GetFiles())
             {
@@ -378,26 +294,41 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 为资源表增加一个资源
         /// </summary>
-        /// <param name="typeKey">资源在表中的类型</param>
-        /// <param name="resourceKey">资源名称</param>
-        /// <param name="offset">资源在包中的偏移</param>
-        /// <param name="length">资源在包中的长度</param>
+        /// <param name="typeKey">资源类型</param>
+        /// <param name="slot">资源信息块</param>
         /// <returns>操作成功与否</returns>
-        private bool AddResource(string typeKey, string resourceKey, long offset, long length)
+        private bool AddResource(string typeKey, ResourceSlot slot)
         {
-            if (this.resourceTable.ContainsKey(typeKey))
+            lock (this.resourceTable)
             {
-                if (!this.resourceTable[typeKey].ContainsKey(resourceKey))
+                if (this.resourceTable.ContainsKey(typeKey))
                 {
-                    this.resourceTable[typeKey][resourceKey] = new KeyValuePair<long, long>(offset, length);
-                    return true;
+                    if (!this.resourceTable[typeKey].ContainsKey(slot.ResourceName))
+                    {
+                        this.resourceTable[typeKey][slot.ResourceName] = slot;
+                        return true;
+                    }
+                    if (
+                        String.Compare(this.resourceTable[typeKey][slot.ResourceName].Version, slot.Version,
+                            StringComparison.Ordinal) < 0)
+                    {
+                        this.resourceTable[typeKey][slot.ResourceName] = slot;
+                        CommonUtils.ConsoleLine(
+                            String.Format(
+                                "Resource already exist with later version, to be replaced, type: {0}, name: {1}",
+                                typeKey, slot.ResourceName), "ResourceManager", OutputStyle.Warning);
+                        return true;
+                    }
+                    CommonUtils.ConsoleLine(
+                        String.Format(
+                            "Resource already exist without later version, to be ignored, type: {0}, name: {1}",
+                            typeKey, slot.ResourceName), "ResourceManager", OutputStyle.Warning);
+                    return false;
                 }
-                else
-                {
-                    CommonUtils.ConsoleLine(String.Format("Resource already exist, type: {0}, name: {1}", typeKey, resourceKey), "ResourceManager", OutputStyle.Warning);
-                }
+                CommonUtils.ConsoleLine(String.Format("Resource type not exist, type: {0}", typeKey),
+                    "ResourceManager", OutputStyle.Warning);
+                return false;
             }
-            return false;
         }
 
         /// <summary>
@@ -411,7 +342,7 @@ namespace Yuri.PlatformCore
             {
                 if (!this.resourceTable.ContainsKey(resTableName))
                 {
-                    this.resourceTable.Add(resTableName, new Dictionary<string, KeyValuePair<long, long>>());
+                    this.resourceTable.Add(resTableName, new Dictionary<string, ResourceSlot>());
                     return true;
                 }
             }
@@ -431,18 +362,118 @@ namespace Yuri.PlatformCore
             }
             this.pendingPst = this.SearchPST();
             // 开始线程处理
-            //List<Thread> threadPool = new List<Thread>();
-            //this.threadFinishCounter = 0;
-            //for (int t = 0; t < threadNum; t++)
-            //{
-            //    threadPool.Add(new Thread(new ParameterizedThreadStart(this.InitDictionaryByPST)));
-            //    threadPool[t].IsBackground = true;
-            //    threadPool[t].Start(t);
-            //}
-            //// 等待线程回调
-            //while (this.threadFinishCounter < threadNum);
+            var threadPool = new List<Thread>();
+            this.threadFinishCounter = 0;
+            for (int t = 0; t < threadNum; t++)
+            {
+                threadPool.Add(new Thread(new ParameterizedThreadStart(this.InitDictionaryByPST)));
+                threadPool[t].IsBackground = true;
+                threadPool[t].Start(t);
+            }
+            // 等待线程回调
+            while (this.threadFinishCounter < threadNum) { }
+            //this.InitDictionaryByPST(0);
+        }
 
-            this.InitDictionaryByPST(0);
+        /// <summary>
+        /// 根据PST向量载入资源到字典
+        /// </summary>
+        /// <param name="threadID">线程ID</param>
+        private void InitDictionaryByPST(object threadID)
+        {
+            int tid = (int)threadID;
+            while (true)
+            {
+                string pstPath;
+                lock (this.pendingPst)
+                {
+                    if (this.pendingPst.Count != 0)
+                    {
+                        pstPath = this.pendingPst.Dequeue();
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                CommonUtils.AsyncConsoleLine(String.Format("Loading PST Resource From \"{0}\" At thread {1}", pstPath, tid),
+                    "ResourceManager", this.consoleMutex, OutputStyle.Normal);
+                // 开始处理文件
+                FileStream fs = new FileStream(pstPath, FileMode.Open);
+                StreamReader sr = new StreamReader(fs);
+                // 读取头部信息
+                string header = sr.ReadLine();
+                if (header == null)
+                {
+                    CommonUtils.AsyncConsoleLine(String.Format("Jump null header PST Resource From \"{0}\" At thread {1}", pstPath, tid),
+                    "ResourceManager", this.consoleMutex, OutputStyle.Normal);
+                    continue;
+                }
+                var headerItem = header.Split('@');
+                if (headerItem.Length != GlobalConfigContext.PackHeaderItemNum && headerItem[0] != GlobalConfigContext.PackHeader)
+                {
+                    CommonUtils.AsyncConsoleLine(String.Format("Ignored Pack (Bad Header): {0}", pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
+                    continue;
+                }
+                try
+                {
+                    var fileCount = Convert.ToInt32(headerItem[1]);
+                    var resourceType = headerItem[2];
+                    var keyItem = headerItem[3].Split('?');
+                    var version = keyItem.Length != 2 ? "0" : keyItem[1];
+                    var key = keyItem[0];
+                    if (key != GlobalConfigContext.GAME_KEY)
+                    {
+                        CommonUtils.AsyncConsoleLine(String.Format("Ignored Pack (Key Failed): {0}", pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
+                        continue;
+                    }
+                    // 通过检验的包才载入资源字典
+                    this.AddResouceTable(resourceType);
+                    int lineEncounter = 0;
+                    while (lineEncounter < fileCount)
+                    {
+                        lineEncounter++;
+                        var lineitem = sr.ReadLine()?.Split(':');
+                        if (lineitem == null)
+                        {
+                            CommonUtils.AsyncConsoleLine(String.Format("Ignored Pack of null body: {0}", pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
+                            continue;
+                        }
+                        if (lineitem[0] == GlobalConfigContext.PackEOF)
+                        {
+                            CommonUtils.AsyncConsoleLine(String.Format("Stop PST caching because encountered EOF: {0}", pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
+                            break;
+                        }
+                        if (lineitem.Length != 3)
+                        {
+                            CommonUtils.AsyncConsoleLine(String.Format("Igonred line(Bad lineitem): {0}, In file: {1}", lineEncounter, pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);
+                            continue;
+                        }
+                        string srcName = lineitem[0];
+                        long srcOffset = Convert.ToInt64(lineitem[1]);
+                        long srcLength = Convert.ToInt64(lineitem[2]);
+                        ResourceSlot resSlot = new ResourceSlot()
+                        {
+                            ResourceName = srcName,
+                            BindingFile = pstPath.Substring(0, pstPath.Length - GlobalConfigContext.PackPostfix.Length),
+                            Position = srcOffset,
+                            Length = srcLength,
+                            Version = version
+                        };
+                        this.AddResource(resourceType, resSlot);
+                    }
+                    CommonUtils.AsyncConsoleLine(String.Format("Finish Dictionary Init From \"{0}\" At thread {1}", pstPath, tid), "ResourceManager", this.consoleMutex, OutputStyle.Normal);
+                }
+                catch (Exception ex)
+                {
+                    CommonUtils.AsyncConsoleLine(ex.ToString(), "ResourceManager / CLR", this.consoleMutex, OutputStyle.Error);
+                }
+                sr.Close();
+                fs.Close();
+            }
+            // 递增回到等待
+            ++this.threadFinishCounter;
+            CommonUtils.AsyncConsoleLine(String.Format("At ResMana thread {0}, Waiting for callback", tid), "ResourceManager", this.consoleMutex, OutputStyle.Important);
         }
 
         /// <summary>
@@ -450,7 +481,7 @@ namespace Yuri.PlatformCore
         /// </summary>
         private void InitScenario()
         {
-            List<Scene> sceneList = Yuri.ILPackage.ILConvertor.GetInstance().Dash(IOUtils.ParseURItoURL(GlobalDataContainer.DevURI_RT_SCENARIO));
+            List<Scene> sceneList = ILConvertor.GetInstance().Dash(IOUtils.ParseURItoURL(GlobalConfigContext.DevURI_RT_SCENARIO));
             foreach (Scene sc in sceneList)
             {
                 if (this.sceneTable.ContainsKey(sc.Scenario))
@@ -469,7 +500,7 @@ namespace Yuri.PlatformCore
         /// <returns>资源管理器的唯一实例</returns>
         public static ResourceManager GetInstance()
         {
-            return null == synObject ? synObject = new ResourceManager() : synObject;
+            return ResourceManager.synObject ?? (ResourceManager.synObject = new ResourceManager());
         }
 
         /// <summary>
@@ -477,11 +508,16 @@ namespace Yuri.PlatformCore
         /// </summary>
         private ResourceManager()
         {
-            this.resourceTable = new Dictionary<string, Dictionary<string, KeyValuePair<long, long>>>();
+            this.resourceTable = new Dictionary<string, Dictionary<string, ResourceSlot>>();
             this.sceneTable = new Dictionary<string, Scene>();
             this.InitDictionary();
             this.InitScenario();
         }
+
+        /// <summary>
+        /// 全图切割矩
+        /// </summary>
+        public static readonly Int32Rect FullImageRect = new Int32Rect(-1, 0, 0, 0);
 
         /// <summary>
         /// 唯一实例量
@@ -491,7 +527,7 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 封包资源字典
         /// </summary>
-        private Dictionary<string, Dictionary<string, KeyValuePair<long, long>>> resourceTable = null;
+        private Dictionary<string, Dictionary<string, ResourceSlot>> resourceTable = null;
 
         /// <summary>
         /// 场景字典
@@ -511,7 +547,38 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 控制台互斥量
         /// </summary>
-        private Mutex consoleMutex = new Mutex();
+        private readonly Mutex consoleMutex = new Mutex();
+
+        /// <summary>
+        /// 封包资源信息块
+        /// </summary>
+        internal sealed class ResourceSlot
+        {
+            /// <summary>
+            /// 获取或设置资源名
+            /// </summary>
+            public string ResourceName { get; set; }
+
+            /// <summary>
+            /// 获取或设置资源所在文件名
+            /// </summary>
+            public string BindingFile { get; set; }
+
+            /// <summary>
+            /// 获取或设置资源在文件中的起始位置
+            /// </summary>
+            public long Position { get; set; }
+
+            /// <summary>
+            /// 获取或设置资源的长度
+            /// </summary>
+            public long Length { get; set; }
+
+            /// <summary>
+            /// 获取或设置资源的版本
+            /// </summary>
+            public string Version { get; set; }
+        }
     }
 
     /// <summary>
@@ -523,12 +590,14 @@ namespace Yuri.PlatformCore
         Pictures,
         Stand,
         Background,
+        Frontier,
         BGM,
         BGS,
         SE,
         VOCAL,
         MessageLayerBackground,
         Button,
-        BranchButton
+        BranchButton,
+        SaveSnapshot
     }
 }

@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Yuri.ILPackage;
+using Yuri.PlatformCore.Graphic;
+using Yuri.PlatformCore.Graphic3D;
+using Yuri.PlatformCore.VM;
+using Yuri.Yuriri;
 
 namespace Yuri.PlatformCore
 {
@@ -21,8 +24,8 @@ namespace Yuri.PlatformCore
             {
                 // 取上一状态
                 var recentStep = RollbackManager.backwardStack.Last();
-                RollbackManager.backwardStack.RemoveAt(RollbackManager.backwardStack.Count - 1);
-                RollbackManager.forwardStack.Add(recentStep);
+                RollbackManager.backwardStack.RemoveLast();
+                RollbackManager.forwardStack.AddLast(recentStep);
                 // 重演绎
                 RollbackManager.GotoSteadyState(recentStep);
             }
@@ -31,8 +34,8 @@ namespace Yuri.PlatformCore
             {
                 // 构造当前状态的拷贝
                 var vm = Director.RunMana.CallStack.Fork() as StackMachine;
-                vm.SetMachineName("Yuri#Forked_" + DateTime.Now.Ticks.ToString());
-                StepStatePackage ssp = new StepStatePackage()
+                vm.SetMachineName(String.Format("Yuri!Forked?{0}?{1}", DateTime.Now.Ticks, rand.Next(0, int.MaxValue)));
+                RollbackableSnapshot ssp = new RollbackableSnapshot()
                 {
                     TimeStamp = DateTime.Now,
                     MusicRef = playingBGM,
@@ -40,15 +43,14 @@ namespace Yuri.PlatformCore
                     VMRef = vm,
                     SymbolRef = SymbolTable.GetInstance().Fork() as SymbolTable,
                     ScreenStateRef = ScreenManager.GetInstance().Fork() as ScreenManager,
-                    ParallelStateStackRef = ForkableState.DeepCopyBySerialization<Stack<Dictionary<string, bool>>>(Director.RunMana.ParallelStack)
                 };
                 // 如果栈中容量溢出就剔掉最早进入的那个
-                if (RollbackManager.forwardStack.Count >= GlobalDataContainer.MaxRollbackStep)
+                if (RollbackManager.forwardStack.Count >= GlobalConfigContext.MaxRollbackStep)
                 {
-                    RollbackManager.forwardStack.RemoveAt(0);
+                    RollbackManager.forwardStack.RemoveFirst();
                 }
                 // 入栈
-                RollbackManager.forwardStack.Add(ssp);
+                RollbackManager.forwardStack.AddLast(ssp);
             }
         }
 
@@ -57,47 +59,55 @@ namespace Yuri.PlatformCore
         /// </summary>
         public static void SteadyBackward()
         {
-            // 还有得回滚时才滚
-            if (RollbackManager.forwardStack.Count > 0)
+            // 还有得回滚且不在动画时才滚
+            if (RollbackManager.forwardStack.Count > 0 &&
+                ((ViewManager.Is3DStage == false && SCamera2D.IsAnyAnimation == false) ||
+                (ViewManager.Is3DStage && SCamera3D.IsAnyAnimation == false)) &&
+                Director.RunMana.GameState(Director.RunMana.CallStack) != StackMachineState.WaitAnimation)
             {
                 // 如果还未回滚过就要将自己先移除
                 if (RollbackManager.IsRollingBack == false && RollbackManager.forwardStack.Count > 1)
                 {
                     var selfStep = RollbackManager.forwardStack.Last();
-                    RollbackManager.forwardStack.RemoveAt(RollbackManager.forwardStack.Count - 1);
-                    RollbackManager.backwardStack.Add(selfStep);
+                    RollbackManager.forwardStack.RemoveLast();
+                    RollbackManager.backwardStack.AddLast(selfStep);
+                    RollbackManager.IsRollingBack = true;
                 }
                 // 取上一状态
-                var lastStep = RollbackManager.forwardStack.Last();
-                RollbackManager.forwardStack.RemoveAt(RollbackManager.forwardStack.Count - 1);
-                RollbackManager.backwardStack.Add(lastStep);
-                // 重演绎
-                RollbackManager.GotoSteadyState(lastStep);
-                RollbackManager.IsRollingBack = true;
+                if (RollbackManager.IsRollingBack && RollbackManager.forwardStack.Count > 0)
+                {
+                    var lastStep = RollbackManager.forwardStack.Last();
+                    RollbackManager.forwardStack.RemoveLast();
+                    RollbackManager.backwardStack.AddLast(lastStep);
+                    // 重演绎
+                    RollbackManager.GotoSteadyState(lastStep);
+                    NotificationManager.SystemMessageNotify("正在回滚", 800);
+                }
             }
         }
         
         /// <summary>
-        /// 重演绎稳定状态
+        /// 将系统跳转到指定的稳定状态
         /// </summary>
         /// <param name="ssp">要演绎的状态包装</param>
-        public static void GotoSteadyState(StepStatePackage ssp)
+        public static void GotoSteadyState(RollbackableSnapshot ssp)
         {
             // 停止消息循环
             Director.PauseUpdateContext();
             // 结束全部动画
             SpriteAnimation.ClearAnimateWaitingDict();
-            // 检查是否需要停下当前的并行处理
-            if (ssp.VMRef.ESP.BindingSceneName != Director.RunMana.CallStack.ESP.BindingSceneName)
+            // 检查是否需要回滚当前的并行处理
+            bool needRepara = false;
+            if (ssp.VMRef.ESP.BindingSceneName != Director.RunMana.CallStack.SAVEP.BindingSceneName)
             {
-                Director.RunMana.StopParallel();
+                Director.RunMana.PauseParallel();
+                needRepara = true;
             }
             // 退到SSP所描述的状态
             SymbolTable.ResetSynObject(ssp.SymbolRef.Fork() as SymbolTable);
             ScreenManager.ResetSynObject(ssp.ScreenStateRef.Fork() as ScreenManager);
             Director.RunMana.ResetCallstackObject(ssp.VMRef.Fork() as StackMachine);
             Director.RunMana.PlayingBGM = ssp.MusicRef;
-            Director.RunMana.ParallelStack = ForkableState.DeepCopyBySerialization<Stack<Dictionary<string, bool>>>(ssp.ParallelStateStackRef);
             Director.RunMana.DashingPureSa = ssp.ReactionRef.Clone(true);
             Director.ScrMana = ScreenManager.GetInstance();
             // 刷新主渲染器上的堆栈绑定
@@ -106,7 +116,7 @@ namespace Yuri.PlatformCore
             ViewManager.GetInstance().ReDraw();
             // 恢复背景音乐
             UpdateRender render = Director.GetInstance().GetMainRender();
-            render.Bgm(Director.RunMana.PlayingBGM, GlobalDataContainer.GAME_SOUND_BGMVOL);
+            render.Bgm(Director.RunMana.PlayingBGM, GlobalConfigContext.GAME_SOUND_BGMVOL);
             // 清空字符串缓冲
             render.dialogPreStr = String.Empty;
             render.pendingDialogQueue.Clear();
@@ -123,6 +133,14 @@ namespace Yuri.PlatformCore
             };
             // 提交中断到主调用堆栈
             Director.RunMana.CallStack.Submit(reactionNtr);
+            // 重启并行
+            if (needRepara)
+            {
+                var sc = ResourceManager.GetInstance().GetScene(ssp.VMRef.ESP.BindingSceneName);
+                Director.RunMana.ConstructParallelForRollingBack(sc);
+                Director.RunMana.BackTraceParallel();
+                Director.RunMana.LastScenario = sc.Scenario;
+            }
             // 重启消息循环
             Director.ResumeUpdateContext();
         }
@@ -134,8 +152,7 @@ namespace Yuri.PlatformCore
         {
             RollbackManager.backwardStack.Clear();
             RollbackManager.forwardStack.Clear();
-            Yuri.Utils.CommonUtils.ConsoleLine("Rollback Manager already reset",
-                "Rollback Manager", Utils.OutputStyle.Important);
+            Utils.CommonUtils.ConsoleLine("Rollback Manager already reset", "Rollback Manager", Utils.OutputStyle.Important);
         }
 
         /// <summary>
@@ -155,7 +172,7 @@ namespace Yuri.PlatformCore
                     if (RollbackManager.backwardStack.Count > 0)
                     {
                         var b = RollbackManager.backwardStack.Last();
-                        RollbackManager.forwardStack.Add(b);
+                        RollbackManager.forwardStack.AddLast(b);
                         RollbackManager.backwardStack.Clear();
                     }
                 }
@@ -168,13 +185,18 @@ namespace Yuri.PlatformCore
         private static bool rollingFlag = false;
 
         /// <summary>
+        /// 随机数发生器
+        /// </summary>
+        private static readonly Random rand = new Random();
+
+        /// <summary>
         /// 前进状态栈
         /// </summary>
-        private readonly static List<StepStatePackage> forwardStack = new List<StepStatePackage>();
+        private static readonly LinkedList<RollbackableSnapshot> forwardStack = new LinkedList<RollbackableSnapshot>();
 
         /// <summary>
         /// 回滚状态栈
         /// </summary>
-        private readonly static List<StepStatePackage> backwardStack = new List<StepStatePackage>();
+        private static readonly LinkedList<RollbackableSnapshot> backwardStack = new LinkedList<RollbackableSnapshot>();
     }
 }

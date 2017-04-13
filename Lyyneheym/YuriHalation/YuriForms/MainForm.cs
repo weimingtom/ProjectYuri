@@ -119,7 +119,7 @@ namespace YuriHalation.YuriForms
             this.button_AddNewFunc.Enabled = this.button_deleteScene.Enabled = this.projTreeView.SelectedNode.Level == 1;
             this.button_deleteFunc.Enabled = this.projTreeView.SelectedNode.Level == 2;
             this.core.ChangeCodePackage(this.projTreeView.SelectedNode.Text,
-                this.projTreeView.SelectedNode.Level == 1 ? "" : this.projTreeView.SelectedNode.Parent.Text);
+                this.projTreeView.SelectedNode.Level == 1 ? String.Empty : this.projTreeView.SelectedNode.Parent.Text);
             this.codeListBox.HorizontalExtent = this.codeListBox.Width - 16;
             this.core.RefreshCodeContext();
             this.core.RefreshRedoUndo();
@@ -157,6 +157,9 @@ namespace YuriHalation.YuriForms
                         case "显示立绘":
                         case "执行过渡":
                             FontBrush = Brushes.Orchid;
+                            break;
+                        case "场景镜头":
+                            FontBrush = Brushes.DeepSkyBlue;
                             break;
                         case "开关操作":
                         case "变量操作":
@@ -447,8 +450,8 @@ namespace YuriHalation.YuriForms
         /// </summary>
         private void button31_Click(object sender, EventArgs e)
         {
-            DeleteViewForm dvf = new DeleteViewForm(2);
-            dvf.ShowDialog(this);
+            SCameraForm scf = new SCameraForm();
+            scf.ShowDialog(this);
         }
 
         /// <summary>
@@ -759,7 +762,7 @@ namespace YuriHalation.YuriForms
             FileDialog fd = new OpenFileDialog();
             fd.Filter = "Halation工程|*.yrproj";
             fd.ShowDialog(this);
-            if (fd.FileName != "")
+            if (fd.FileName != String.Empty)
             {
                 this.core.LoadProject(fd.FileName);
                 this.资源ToolStripMenuItem.Enabled = this.编辑ToolStripMenuItem.Enabled =
@@ -851,5 +854,11 @@ namespace YuriHalation.YuriForms
             upf.ShowDialog(this);
         }
         #endregion
+
+        private void button35_Click_2(object sender, EventArgs e)
+        {
+            SCamera3DForm scf = new SCamera3DForm();
+            scf.ShowDialog();
+        }
     }
 }
