@@ -40,7 +40,7 @@ namespace Yuri.PlatformCore.Graphic3D
         /// <param name="life">生命周期</param>
         public void SpawnParticle(Point3D position, double speed, Color color, double size, double life)
         {
-            this.emitterDict[color]?.SpawnParticle(position, speed, size, life);
+            if (this.emitterDict[color] != null) this.emitterDict[color].SpawnParticle(position, speed, size, life);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace Yuri.PlatformCore.Graphic3D
         /// <summary>
         /// 当前粒子系统中活泼的粒子数
         /// </summary>
-        public int ActiveParticleCount => this.emitterDict.Values.Sum(ps => ps.Count);
+        public int ActiveParticleCount { get { return this.emitterDict.Values.Sum(ps => ps.Count); } }
 
         /// <summary>
         /// 粒子发射器集合

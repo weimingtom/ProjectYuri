@@ -187,7 +187,7 @@ namespace Yuri.YuriInterpreter
         private string DrawTree(SyntaxTreeNode myNode)
         {
             // 若空就不需要继续了，否则取父母节点，若空就不需要画线了
-            SyntaxTreeNode parent = myNode?.Parent;
+            SyntaxTreeNode parent = myNode != null ? myNode.Parent : null;
             if (parent == null)
             {
                 return String.Empty;

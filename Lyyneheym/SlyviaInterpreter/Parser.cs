@@ -840,9 +840,9 @@ namespace Yuri.YuriInterpreter
             while (true)
             {
                 // 已经没有需要递归下降的节点，否则取她的母亲节点来取得自己的姐妹
-                SyntaxTreeNode parent = res?.Parent;
+                SyntaxTreeNode parent = (res != null ? res.Parent : null);
                 // 如果没有母亲，就说明已经回退到了树的最上层
-                if (parent?.Children == null) { return null; }
+                if (parent != null && parent.Children == null) { return null; }
                 int i = 0;
                 // 遍历寻找自己在姐妹中的排位
                 for (; i < parent.Children.Count && parent.Children[i] != res; i++) { }

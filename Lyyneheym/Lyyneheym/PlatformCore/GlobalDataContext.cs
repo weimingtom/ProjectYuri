@@ -49,7 +49,7 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 舞台：窗体实际高度（含标题栏）
         /// </summary>
-        public static int GAME_WINDOW_ACTUALHEIGHT => GlobalConfigContext.GAME_WINDOW_HEIGHT + 32;
+        public static int GAME_WINDOW_ACTUALHEIGHT { get { return GlobalConfigContext.GAME_WINDOW_HEIGHT + 32; } }
         /// <summary>
         /// 舞台：是否允许自由调节
         /// </summary>

@@ -39,7 +39,7 @@ namespace Yuri.PlatformCore.VM
                     ? ResourceCachePool.PermanentDictionary[resourceId]
                     : null;
             }
-            return cBlock?.Referred().AllocReference;
+            return cBlock != null ? cBlock.Referred().AllocReference : null;
         }
 
         /// <summary>

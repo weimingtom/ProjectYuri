@@ -8,6 +8,12 @@ namespace Yuri.PlatformCore.Graphic
     [Serializable]
     internal sealed class Viewport2DDescriptor : CloneableDescriptor
     {
+        public Viewport2DDescriptor()
+        {
+            ScaleX = 1.0;
+            ScaleY = 1.0;
+        }
+
         /// <summary>
         /// 获取或设置视窗类型
         /// </summary>
@@ -47,12 +53,12 @@ namespace Yuri.PlatformCore.Graphic
         /// <summary>
         /// 获取或设置视窗横向缩放比
         /// </summary>
-        public double ScaleX { get; set; } = 1.0;
+        public double ScaleX { get; set; } //= 1.0;
 
         /// <summary>
         /// 获取或设置视窗纵向缩放比
         /// </summary>
-        public double ScaleY { get; set; } = 1.0;
+        public double ScaleY { get; set; } // = 1.0;
 
         /// <summary>
         /// 获取或设置视窗动画X锚点

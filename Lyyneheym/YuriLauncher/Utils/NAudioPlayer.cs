@@ -205,7 +205,7 @@ namespace Yuri.YuriLauncher.Utils
         {
             foreach (var ah in this.channelDict)
             {
-                ah.Value?.DisposeWithoutCallback();
+                if (ah.Value != null) ah.Value.DisposeWithoutCallback();
             }
             this.channelDict.Clear();
         }
@@ -240,6 +240,11 @@ namespace Yuri.YuriLauncher.Utils
     /// </summary>
     internal sealed class NAudioChannelPlayer
     {
+        public NAudioChannelPlayer()
+        {
+            IsLoop = true;
+        } 
+  
         /// <summary>
         /// 初始化通道
         /// </summary>
@@ -268,7 +273,7 @@ namespace Yuri.YuriLauncher.Utils
         {
             if (!this.IsPlaying)
             {
-                this.wavePlayer?.Play();
+                if (this.wavePlayer != null) this.wavePlayer.Play();
                 this.IsPlaying = true;
             }
         }
@@ -303,7 +308,7 @@ namespace Yuri.YuriLauncher.Utils
         public void Dispose()
         {
             this.DisposeWithoutCallback();
-            this.stopCallback?.Invoke();
+            if (this.stopCallback != null)  this.stopCallback.Invoke();
         }
 
         /// <summary>
@@ -366,27 +371,27 @@ namespace Yuri.YuriLauncher.Utils
         /// <summary>
         /// 获取该通道是否正在播放音乐
         /// </summary>
-        public bool IsPlaying { get; private set; } = false;
+        public bool IsPlaying { get; private set; } //= false;
 
         /// <summary>
         /// 获取该通道是否循环播放
         /// </summary>
-        public bool IsLoop { get; private set; } = true;
+        public bool IsLoop { get; private set; } //= true;
 
         /// <summary>
         /// 获取通道绑定的内存流
         /// </summary>
-        public MemoryStream BindingStream { get; set; } = null;
+        public MemoryStream BindingStream { get; set; } //= null;
 
         /// <summary>
         /// 获取通道播放的位置戳
         /// </summary>
-        public TimeSpan CurrentTime => this.playingStream?.CurrentTime ?? TimeSpan.Zero;
+        public TimeSpan CurrentTime { get{return (this.playingStream != null && this.playingStream.CurrentTime != null) ? this.playingStream.CurrentTime : TimeSpan.Zero;}}
 
         /// <summary>
         /// 获取通道音乐总长度
         /// </summary>
-        public TimeSpan TotalTime => this.playingStream?.TotalTime ?? TimeSpan.Zero;
+        public TimeSpan TotalTime { get { return (this.playingStream != null && this.playingStream.TotalTime != null) ? this.playingStream.TotalTime : TimeSpan.Zero; } }
 
         /// <summary>
         /// 音轨播放器

@@ -134,28 +134,28 @@ namespace Yuri.PlatformCore.Graphic
         /// </summary>
         /// <param name="id">文字层id</param>
         /// <returns>文字层实例</returns>
-        public MessageLayer GetMessageLayer(int id) => this.messageLayerVec[id];
+        public MessageLayer GetMessageLayer(int id) {return this.messageLayerVec[id];}
 
         /// <summary>
         /// 获取画面上的按钮实例
         /// </summary>
         /// <param name="id">按钮id</param>
         /// <returns>按钮实例</returns>
-        public SpriteButton GetSpriteButton(int id) => this.buttonLayerVec[id];
+        public SpriteButton GetSpriteButton(int id) {return this.buttonLayerVec[id];}
 
         /// <summary>
         /// 获取画面上的按钮实例
         /// </summary>
         /// <param name="id">选择支id</param>
         /// <returns>选择支实例</returns>
-        public BranchButton GetBranchButton(int id) => this.branchButtonVec[id];
+        public BranchButton GetBranchButton(int id) {return this.branchButtonVec[id];}
 
         /// <summary>
         /// 获取画面上的2D视窗
         /// </summary>
         /// <param name="vt">视窗类型</param>
         /// <returns>视窗实例</returns>
-        public Viewport2D GetViewport2D(ViewportType vt) => this.viewbox2dVec[(int)vt];
+        public Viewport2D GetViewport2D(ViewportType vt) {return this.viewbox2dVec[(int)vt];}
 
         /// <summary>
         /// 将指定类型的所有项目从画面移除
@@ -394,7 +394,7 @@ namespace Yuri.PlatformCore.Graphic
         /// 获取主视窗上的过渡容器
         /// </summary>
         /// <returns>过渡容器引用</returns>
-        public TransitionElement GetTransitionBox() => ViewManager.View2D.TransitionBox;
+        public TransitionElement GetTransitionBox() {return ViewManager.View2D.TransitionBox;}
 
         /// <summary>
         /// 在过渡效果完成时触发
@@ -402,7 +402,7 @@ namespace Yuri.PlatformCore.Graphic
         private void TransitionEnded(object sender, TransitionEventArgs e)
         {
             // 恢复back层不可见
-            if (backgroundSpriteVec[(int)BackgroundPage.Back]?.DisplayBinding != null)
+            if (backgroundSpriteVec[(int)BackgroundPage.Back] != null && backgroundSpriteVec[(int)BackgroundPage.Back].DisplayBinding != null)
             {
                 this.backgroundSpriteVec[(int)BackgroundPage.Back].DisplayBinding.Visibility = Visibility.Hidden;
             }
@@ -808,7 +808,7 @@ namespace Yuri.PlatformCore.Graphic
         /// </summary>
         /// <param name="cSlot">槽中心在屏幕分块的编号</param>
         /// <returns>模型对象</returns>
-        private GeometryModel3D GetCharacterModel3D(int cSlot) => ViewManager.View3D.ST3D_Character_Group.Children[cSlot] as GeometryModel3D;
+        private GeometryModel3D GetCharacterModel3D(int cSlot) {return ViewManager.View3D.ST3D_Character_Group.Children[cSlot] as GeometryModel3D;}
 
         /// <summary>
         /// 为主窗体描绘一个文字层
@@ -819,7 +819,7 @@ namespace Yuri.PlatformCore.Graphic
         {
             TextBlock msgBlock = new TextBlock();
             msglay.DisplayBinding = msgBlock;
-            if (msglay.BackgroundSprite?.SpriteBitmapImage != null)
+            if (msglay.BackgroundSprite != null && msglay.BackgroundSprite.SpriteBitmapImage != null)
             {
                 ImageBrush ib = new ImageBrush(msglay.BackgroundSprite.SpriteBitmapImage);
                 BitmapImage t = ib.ImageSource as BitmapImage;
@@ -1041,7 +1041,7 @@ namespace Yuri.PlatformCore.Graphic
                         return;
                     case ResourceType.Stand:
                         var slotModelGeometry = this.GetCharacterModel3D(sprite.Descriptor.Slot3D);
-                        if (!(slotModelGeometry?.Material is DiffuseMaterial))
+                        if (!(slotModelGeometry != null && slotModelGeometry.Material is DiffuseMaterial))
                         {
                             return;
                         }
@@ -1234,13 +1234,13 @@ namespace Yuri.PlatformCore.Graphic
         /// 为视窗管理器设置窗体的引用并更新视窗向量
         /// </summary>
         /// <param name="wnd">主窗体的引用</param>
-        public static void SetWindowReference(MainWindow wnd) => ViewManager.mWnd = wnd;
+        public static void SetWindowReference(MainWindow wnd) {ViewManager.mWnd = wnd;}
 
         /// <summary>
         /// 获取应用程序主窗体
         /// </summary>
         /// <returns>主窗体的引用</returns>
-        public static MainWindow GetWindowReference() => ViewManager.mWnd;
+        public static MainWindow GetWindowReference() { return ViewManager.mWnd; }
 
         /// <summary>
         /// 获取或设置遮罩层的引用
@@ -1339,22 +1339,22 @@ namespace Yuri.PlatformCore.Graphic
         /// <summary>
         /// 2D主舞台页面的引用
         /// </summary>
-        public static Stage2D View2D => ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage) as Stage2D;
+        public static Stage2D View2D {get{return ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage) as Stage2D;}}
 
         /// <summary>
         /// 3D主舞台页面的引用
         /// </summary>
-        public static Stage3D View3D => ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage) as Stage3D;
+        public static Stage3D View3D {get{return ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage) as Stage3D;}}
 
         /// <summary>
         /// 获取或设置当前是否使用3D镜头系统
         /// </summary>
-        public static bool Is3DStage => GlobalConfigContext.GAME_IS3D;
+        public static bool Is3DStage {get{return GlobalConfigContext.GAME_IS3D;}}
 
         /// <summary>
         /// 获取主窗体的引用
         /// </summary>
-        public static MainWindow mWnd { get; private set; } = null;
+        public static MainWindow mWnd { get; private set; }// = null;
         
         /// <summary>
         /// 唯一实例

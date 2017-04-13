@@ -672,12 +672,12 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 获取或设置当前是否正在点击按钮
         /// </summary>
-        public static bool IsButtonClicking { get; set; } = false;
+        public static bool IsButtonClicking { get; set; } // = false;
 
         /// <summary>
         /// 获取或设置当前是否处于全屏态
         /// </summary>
-        public static bool IsFullScreen { get; set; } = false;
+        public static bool IsFullScreen { get; set; } // = false;
 
         /// <summary>
         /// 获取程序启动的时刻
@@ -692,7 +692,7 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 获取程序在本次启动到目前为止的时间间隔
         /// </summary>
-        public static TimeSpan CurrentTimeAcc => DateTime.Now - Director.StartupTimeStamp;
+        public static TimeSpan CurrentTimeAcc {get{return DateTime.Now - Director.StartupTimeStamp;}}
         
         /// <summary>
         /// 当前游戏的状态
@@ -794,7 +794,7 @@ namespace Yuri.PlatformCore
         /// 获取主渲染器
         /// </summary>
         /// <returns>与主调用堆栈绑定的渲染器</returns>
-        public UpdateRender GetMainRender() => this.updateRender;
+        public UpdateRender GetMainRender() {return this.updateRender;}
         
         /// <summary>
         /// 消息循环计时器

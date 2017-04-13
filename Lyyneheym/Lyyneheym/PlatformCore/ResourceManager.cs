@@ -433,7 +433,7 @@ namespace Yuri.PlatformCore
                     while (lineEncounter < fileCount)
                     {
                         lineEncounter++;
-                        var lineitem = sr.ReadLine()?.Split(':');
+                        var lineitem = sr.ReadLine() != null ? sr.ReadLine().Split(':') : null;
                         if (lineitem == null)
                         {
                             CommonUtils.AsyncConsoleLine(String.Format("Ignored Pack of null body: {0}", pstPath), "ResourceManager", this.consoleMutex, OutputStyle.Warning);

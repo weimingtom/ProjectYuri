@@ -60,7 +60,7 @@ namespace Yuri.PlatformCore.Graphic
             var rp = ViewPageManager.RetrievePage(toPageName);
             if (rp != null && ViewPageManager.CurrentPage != null)
             {
-                NavigationService.GetNavigationService(ViewPageManager.CurrentPage)?.Navigate(rp);
+                if (NavigationService.GetNavigationService(ViewPageManager.CurrentPage) != null) NavigationService.GetNavigationService(ViewPageManager.CurrentPage).Navigate(rp);
                 ViewPageManager.PageCallStack.Push(rp);
             }
             else
@@ -83,7 +83,7 @@ namespace Yuri.PlatformCore.Graphic
             }
             else
             {
-                CommonUtils.ConsoleLine(string.Format("Cannot go back from page: {0}, Navigation service ignored.", ViewPageManager.CurrentPage?.Name),
+                CommonUtils.ConsoleLine(string.Format("Cannot go back from page: {0}, Navigation service ignored.", ViewPageManager.CurrentPage != null ? ViewPageManager.CurrentPage.Name : null),
                     "ViewPageManager", OutputStyle.Error);
             }
         }
@@ -101,7 +101,7 @@ namespace Yuri.PlatformCore.Graphic
         /// <summary>
         /// 获取当前呈现在屏幕上的页面
         /// </summary>
-        public static Page CurrentPage => ViewPageManager.PageCallStack.Count > 0 ? ViewPageManager.PageCallStack.Peek() : null;
+        public static Page CurrentPage { get { return ViewPageManager.PageCallStack.Count > 0 ? ViewPageManager.PageCallStack.Peek() : null; } }
 
         /// <summary>
         /// 页面转移栈

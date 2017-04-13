@@ -22,7 +22,7 @@ namespace Yuri.PlatformCore
         /// </summary>
         /// <param name="vsm">关于哪个调用堆栈做动作</param>
         /// <returns>栈顶状态</returns>
-        public StackMachineState GameState(StackMachine vsm) => vsm.ESP?.State ?? StackMachineState.NOP;
+        public StackMachineState GameState(StackMachine vsm) { return (vsm.ESP != null && vsm.ESP.State != null) ? vsm.ESP.State : StackMachineState.NOP; }
 
         /// <summary>
         /// 取下一动作指令并暂存当前执行的动作
@@ -183,7 +183,7 @@ namespace Yuri.PlatformCore
             {
                 return;
             }
-            CommonUtils.ConsoleLine(String.Format("Call Scene: {0} , with target: {1}", scene?.Scenario, target == null ? "null" : target.NodeName),
+            CommonUtils.ConsoleLine(String.Format("Call Scene: {0} , with target: {1}", (scene != null && scene.Scenario != null) ? scene.Scenario  : null, target == null ? "null" : target.NodeName),
                     "RuntimeManager", OutputStyle.Important);
             // 基础调用
             this.CallStack.Submit(scene, target);

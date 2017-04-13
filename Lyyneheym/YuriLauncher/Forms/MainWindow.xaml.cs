@@ -136,7 +136,7 @@ namespace Yuri.YuriLauncher.Forms
             if (this.label_Screen_Typing != null)
             {
                 this.label_Screen_Typing.Content = this.slider_Screen_Typing.Value.ToString("0");
-                MsgLayerTypingStory?.Stop();
+                if (MsgLayerTypingStory != null) MsgLayerTypingStory.Stop();
                 this.TypeWriter(TypingStr, this.textblock_Screen_Typing, (int)this.slider_Screen_Typing.Value);
             }
         }

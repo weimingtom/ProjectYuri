@@ -148,12 +148,12 @@ namespace Yuri.PlatformCore.Graphic3D
         /// <summary>
         /// 获取当前粒子数
         /// </summary>
-        public int Count => this.particleList.Count;
+        public int Count { get{return this.particleList.Count;}}
 
         /// <summary>
         /// 获取当前粒子发射器在3D世界的模型对象
         /// </summary>
-        public Model3D ParticleModel => this.particleModel;
+        public Model3D ParticleModel { get { return this.particleModel; } }
 
         /// <summary>
         /// 粒子渲染列表

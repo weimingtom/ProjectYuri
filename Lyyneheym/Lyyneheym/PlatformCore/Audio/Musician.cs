@@ -224,7 +224,7 @@ namespace Yuri.PlatformCore.Audio
         /// </summary>
         public void Dispose()
         {
-            this.audioEngine?.Dispose();
+            if (this.audioEngine != null) this.audioEngine.Dispose();
         }
 
         /// <summary>

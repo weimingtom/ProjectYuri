@@ -14,52 +14,52 @@ namespace Yuri.Yuriri
         /// <summary>
         /// 节点名称
         /// </summary>
-        public string NodeName { get; set; } = null;
+        public string NodeName { get; set; } //= null;
         
         /// <summary>
         /// 节点动作
         /// </summary>
-        public SActionType Type { get; set; } = SActionType.NOP;
+        public SActionType Type { get; set; } //= SActionType.NOP;
         
         /// <summary>
         /// 参数字典
         /// </summary>
-        public Dictionary<string, string> ArgsDict { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> ArgsDict { get; set; } //= new Dictionary<string, string>();
         
         /// <summary>
         /// 条件从句逆波兰表达
         /// </summary>
-        public string CondPolish { get; set; } = null;
+        public string CondPolish { get; set; } //= null;
         
         /// <summary>
         /// 下一节点
         /// </summary>
-        public SceneAction Next { get; set; } = null;
+        public SceneAction Next { get; set; } //= null;
 
         /// <summary>
         /// 真节点向量
         /// </summary>
-        public List<SceneAction> TrueRouting { get; set; } = null;
+        public List<SceneAction> TrueRouting { get; set; } //= null;
 
         /// <summary>
         /// 假节点向量
         /// </summary>
-        public List<SceneAction> FalseRouting { get; set; } = null;
+        public List<SceneAction> FalseRouting { get; set; } //= null;
 
         /// <summary>
         /// 是否依存函数
         /// </summary>
-        public bool IsBelongFunc { get; set; } = false;
+        public bool IsBelongFunc { get; set; } //= false;
 
         /// <summary>
         /// 依存函数名
         /// </summary>
-        public string ReliedFuncName { get; set; } = null;
+        public string ReliedFuncName { get; set; } //= null;
 
         /// <summary>
         /// 附加值
         /// </summary>
-        public string Tag { get; set; } = null;
+        public string Tag { get; set; } //= null;
 
         /// <summary>
         /// 带SAP项的构造函数
@@ -83,7 +83,7 @@ namespace Yuri.Yuriri
         /// <returns>该作用对象动作的下一动作</returns>
         public static SceneAction operator++(SceneAction rhs)
         {
-            return rhs?.Next;
+            return rhs != null ? rhs : rhs.Next;
         }
 
         /// <summary>
@@ -135,7 +135,7 @@ namespace Yuri.Yuriri
             }
             sb.Append(this.IsBelongFunc ? "1^" : "0^");
             sb.Append(this.ReliedFuncName + "^");
-            sb.Append(Tag?.Replace(@"\", @"\\").Replace(@",", @"\,").Replace(@"^", @"\^").Replace("\r\n", @"\$") ?? String.Empty);
+            sb.Append(Tag != null ? Tag.Replace(@"\", @"\\").Replace(@",", @"\,").Replace(@"^", @"\^").Replace("\r\n", @"\$") : String.Empty);
             return sb.ToString();
         }
 
@@ -244,7 +244,7 @@ namespace Yuri.Yuriri
         /// 字符串化方法
         /// </summary>
         /// <returns>该动作的名字</returns>
-        public override string ToString() => this.NodeName;
+        public override string ToString() { return this.NodeName; }
     }
     
     /// <summary>

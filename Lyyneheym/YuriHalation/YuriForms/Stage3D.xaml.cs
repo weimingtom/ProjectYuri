@@ -60,8 +60,8 @@ namespace YuriHalation.YuriForms
         public static int SCameraFocusRow = 7;
         public static int SCameraFocusCol = 0;
         public static double SCameraScale = 8;
-        public static PerspectiveCamera ST3D_Camera { get; set; } = null;
-        public static Frame MaskFrameRef { get; set; } = null;
+        public static PerspectiveCamera ST3D_Camera { get; set; } //= null;
+        public static Frame MaskFrameRef { get; set; }// = null;
         /// <summary>
         /// 将镜头中心平移到指定的区块
         /// </summary>
@@ -371,7 +371,7 @@ namespace YuriHalation.YuriForms
         /// <param name="pA">世界坐标对镜头平面的投影点A</param>
         /// <param name="pB">世界坐标对镜头平面的投影点B</param>
         /// <returns>两点在世界坐标下的曼哈顿距离</returns>
-        public static Point GetManhattanDistance(Point pA, Point pB) => new Point(pA.X - pB.X, pA.Y - pB.Y);
+        public static Point GetManhattanDistance(Point pA, Point pB) {return new Point(pA.X - pB.X, pA.Y - pB.Y);}
 
         /// <summary>
         /// 获取屏幕分区的中心坐标
@@ -379,21 +379,21 @@ namespace YuriHalation.YuriForms
         /// <param name="r">区块的横向编号，值域[0, 4]，其中2是屏幕纵向正中</param>
         /// <param name="c">区块的纵向编号，值域[0, 32]，其中0是屏幕横向正中</param>
         /// <returns>块的中心坐标</returns>
-        public static Point GetScreenCoordination(int r, int c) => PreviewSCamera3D.screenPointMap[r, c];
+        public static Point GetScreenCoordination(int r, int c) {return PreviewSCamera3D.screenPointMap[r, c];}
 
         /// <summary>
         /// 获取缩放指定尺度时的镜头深度
         /// </summary>
         /// <param name="scale">立绘层缩放尺度</param>
         /// <returns>镜头的Z坐标</returns>
-        public static double GetCameraZIndex(double scale) => 8.0 * Math.Pow(scale, -1);
+        public static double GetCameraZIndex(double scale) {return 8.0 * Math.Pow(scale, -1);}
 
         /// <summary>
         /// 获取指定镜头深度下的缩放尺度
         /// </summary>
         /// <param name="zindex">镜头的Z坐标</param>
         /// <returns>立绘层缩放尺度</returns>
-        public static double GetCameraScale(double zindex) => 8.0 * Math.Pow(zindex, -1);
+        public static double GetCameraScale(double zindex) {return 8.0 * Math.Pow(zindex, -1);}
 
         /// <summary>
         /// 立即跳过所有动画
@@ -404,8 +404,9 @@ namespace YuriHalation.YuriForms
             {
                 foreach (var ani in PreviewSCamera3D.AnimatingStorySet)
                 {
-                    if (ani is Storyboard asb)
+                    if (ani is Storyboard)
                     {
+                        Storyboard asb = (Storyboard)ani;
                         asb.SkipToFill();
                     }
                 }

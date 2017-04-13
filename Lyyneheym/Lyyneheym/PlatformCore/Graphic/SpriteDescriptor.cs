@@ -76,12 +76,12 @@ namespace Yuri.PlatformCore.Graphic
         /// <summary>
         /// 获取或设置精灵的模糊半径
         /// </summary>
-        public double BlurRadius { get; set; } = 0;
+        public double BlurRadius { get; set; } //= 0;
 
         /// <summary>
         /// 获取或设置精灵的投影半径
         /// </summary>
-        public double ShadowRadius { get; set; } = 0;
+        public double ShadowRadius { get; set; } //= 0;
 
         /// <summary>
         /// 获取或设置精灵在动画结束后的X坐标
@@ -121,12 +121,12 @@ namespace Yuri.PlatformCore.Graphic
         /// <summary>
         /// 获取或设置精灵在动画结束后的模糊半径
         /// </summary>
-        public double ToBlurRadius { get; set; } = 0;
+        public double ToBlurRadius { get; set; } // = 0;
 
         /// <summary>
         /// 获取或设置精灵在动画结束后的投影半径
         /// </summary>
-        public double ToShadowRadius { get; set; } = 0;
+        public double ToShadowRadius { get; set; } // = 0;
 
         /// <summary>
         /// 获取或设置精灵锚点方式

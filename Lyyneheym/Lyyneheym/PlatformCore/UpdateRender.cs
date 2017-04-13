@@ -515,7 +515,7 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 获取当前是否正在显示对话
         /// </summary>
-        public bool IsShowingDialog => this.isShowingDialog;
+        public bool IsShowingDialog {get{return this.isShowingDialog;}}
 
         /// <summary>
         /// 是否下一动作仍为对话
@@ -605,12 +605,12 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 2D主舞台的引用
         /// </summary>
-        private PageView.Stage2D view2d => (PageView.Stage2D)ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage);
+        private PageView.Stage2D view2d {get{return (PageView.Stage2D)ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage);}}
 
         /// <summary>
         /// 3D主舞台的引用
         /// </summary>
-        private PageView.Stage3D view3d => (PageView.Stage3D)ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage);
+        private PageView.Stage3D view3d { get { return (PageView.Stage3D)ViewPageManager.RetrievePage(GlobalConfigContext.FirstViewPage); } }
 
         /// <summary>
         /// 音乐引擎
@@ -816,7 +816,7 @@ namespace Yuri.PlatformCore
                     this.MsgLayerOpt(
                         this.ParseInt(action.ArgsDict["id"], 0),
                         this.ParseDirectString(action.ArgsDict["target"], String.Empty),
-                        dashMsgoptItem?.ToString() ?? String.Empty
+                        (dashMsgoptItem != null && dashMsgoptItem.ToString() != null) ? dashMsgoptItem.ToString() : String.Empty
                         );
                     break;
                 case SActionType.act_scamera:
@@ -850,7 +850,7 @@ namespace Yuri.PlatformCore
         public void Shutdown()
         {
             CommonUtils.ConsoleLine("Shutdown is called", "UpdateRender", OutputStyle.Important);
-            ViewManager.GetWindowReference()?.Close();
+            if (ViewManager.GetWindowReference() != null) ViewManager.GetWindowReference().Close();
         }
 
         /// <summary>

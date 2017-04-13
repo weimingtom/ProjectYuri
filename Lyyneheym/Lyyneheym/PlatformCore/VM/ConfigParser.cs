@@ -23,8 +23,8 @@ namespace Yuri.PlatformCore.VM
             while (sr.EndOfStream == false)
             {
                 string aline = sr.ReadLine();
-                var lineitems = aline?.Split(new[] {" => "}, StringSplitOptions.RemoveEmptyEntries);
-                if (lineitems?.Length == 2)
+                var lineitems = (aline != null) ? aline.Split(new[] {" => "}, StringSplitOptions.RemoveEmptyEntries) : null;
+                if (lineitems != null && lineitems.Length == 2)
                 {
                     configDict.Add(lineitems[0], lineitems[1]);
                 }

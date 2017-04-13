@@ -102,7 +102,7 @@ namespace Yuri.PlatformCore
             if (nti.IconFilename != String.Empty)
             {
                 var icoRes = ResourceManager.GetInstance().GetPicture(nti.IconFilename, ResourceManager.FullImageRect);
-                NotificationManager.IcoUI.Source = icoRes?.SpriteBitmapImage;
+                NotificationManager.IcoUI.Source = (icoRes != null ? icoRes.SpriteBitmapImage : null);
             }
             // 执行动画
             NotificationManager.IsNotificating = true;
@@ -155,7 +155,7 @@ namespace Yuri.PlatformCore
         /// <summary>
         /// 获取或设置当前是否正在播放通知
         /// </summary>
-        public static bool IsNotificating { get; set; } = false;
+        public static bool IsNotificating { get; set; } //= false;
 
         /// <summary>
         /// 待处理消息队列

@@ -61,7 +61,7 @@ namespace Yuri.Yuriri
         /// <summary>
         /// 获取或设置函数的全局名称
         /// </summary>
-        public string GlobalName => String.Format("__YuriFunc@{0}?{1}", this.Callname, this.ParentSceneName);
+        public string GlobalName { get { return String.Format("__YuriFunc@{0}?{1}", this.Callname, this.ParentSceneName); } }
 
         /// <summary>
         /// 函数动作序列入口
@@ -76,7 +76,7 @@ namespace Yuri.Yuriri
         /// <summary>
         /// 形参列表
         /// </summary> 
-        public List<string> Param { get; set; } = null;
+        public List<string> Param { get; set; }// = null;
 
         /// <summary>
         /// 场景名称

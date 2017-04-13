@@ -10,6 +10,14 @@ namespace Yuri.PlatformCore.VM
     [Serializable]
     internal sealed class StackMachineFrame
     {
+        public StackMachineFrame()
+        {
+            this.IR = String.Empty;
+            this.State = StackMachineState.NOP;
+            this.Delay = TimeSpan.Zero;
+            this.TimeStamp = DateTime.Now;
+        }
+
         /// <summary>
         /// 执行一个微步，指针前移一位
         /// </summary>
@@ -52,74 +60,74 @@ namespace Yuri.PlatformCore.VM
         /// 获取或设置下一指令指针。
         /// 它是一个运行时缓存，在保存游戏时被悬空
         /// </summary>
-        public SceneAction IP { get; set; } = null;
+        public SceneAction IP { get; set; } //= null;
 
         /// <summary>
         /// 获取或设置下一指令的索引
         /// </summary>
-        public string IR { get; set; } = String.Empty;
+        public string IR { get; set; } //= String.Empty;
 
         /// <summary>
         /// 获取或设置指令计数器
         /// </summary>
-        public int PC { get; set; } = 0;
+        public int PC { get; set; } // = 0;
 
         /// <summary>
         /// 获取或设置栈帧状态
         /// </summary>
-        public StackMachineState State { get; set; } = StackMachineState.NOP;
+        public StackMachineState State { get; set; } //= StackMachineState.NOP;
         
         /// <summary>
         /// 获取或设置正在执行的脚本名（场景名、函数名）
         /// </summary>
-        public string ScriptName { get; set; } = null;
+        public string ScriptName { get; set; } //= null;
 
         /// <summary>
         /// 获取或设置绑定的场景名称
         /// </summary>
-        public string BindingSceneName { get; set; } = null;
+        public string BindingSceneName { get; set; } //= null;
 
         /// <summary>
         /// 获取或设置绑定的函数调用名称
         /// </summary>
-        public string BindingFunctionName { get; set; } = null;
+        public string BindingFunctionName { get; set; } // = null;
 
         /// <summary>
         /// 获取或设置实参数列表
         /// </summary>
-        public List<object> Argv { get; set; } = null;
+        public List<object> Argv { get; set; } //= null;
 
         /// <summary>
         /// 获取或设置执行栈帧前的延迟
         /// </summary>
-        public TimeSpan Delay { get; set; } = TimeSpan.Zero;
+        public TimeSpan Delay { get; set; } //= TimeSpan.Zero;
 
         /// <summary>
         /// 获取或设置时间戳
         /// </summary>
-        public DateTime TimeStamp { get; set; } = DateTime.Now;
+        public DateTime TimeStamp { get; set; }// = DateTime.Now;
 
         /// <summary>
         /// 获取或设置绑定的中断动作
         /// </summary>
-        public Interrupt BindingInterrupt { get; set; } = null;
+        public Interrupt BindingInterrupt { get; set; }// = null;
 
         /// <summary>
         /// 获取或设置绑定的函数实例
         /// </summary>
-        public SceneFunction BindingFunction { get; set; } = null;
+        public SceneFunction BindingFunction { get; set; }// = null;
 
         /// <summary>
         /// 获取或设置该栈帧的备注信息
         /// </summary>
-        public string Tag { get; set; } = null;
+        public string Tag { get; set; }// = null;
 
         /// <summary>
         /// 字符串化方法
         /// </summary>
         public override string ToString()
         {
-            return String.Format("StackFrame:{0} -> {1}", this.State.ToString(), IP?.ToString() ?? String.Empty);
+            return String.Format("StackFrame:{0} -> {1}", this.State.ToString(), (IP != null && IP.ToString() != null) ? IP.ToString() : String.Empty);
         }
     }
 
